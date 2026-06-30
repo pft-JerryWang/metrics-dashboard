@@ -14,14 +14,12 @@
 html,body{margin:0;height:100%}
 body{background:var(--bg);color:var(--ink);font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;}
 .app{display:flex;min-height:100vh}
-/* sidebar */
 .side{width:212px;flex:none;background:#fff;border-right:1px solid var(--line);padding:18px 14px;position:sticky;top:0;height:100vh}
 .brand{font-weight:800;letter-spacing:3px;color:var(--brand);font-size:20px;padding:4px 8px 18px}
 .nav a{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:9px;color:#374151;text-decoration:none;font-weight:600;font-size:13.5px;cursor:pointer;margin-bottom:4px}
 .nav a:hover{background:#f3f4f6}
 .nav a.on{background:#fde7f1;color:var(--brand)}
 .nav .ic{width:16px;height:16px;flex:none}
-/* main */
 .main{flex:1;min-width:0;display:flex;flex-direction:column}
 .topbar{display:flex;align-items:center;gap:14px;padding:16px 24px;border-bottom:1px solid var(--line);background:#fff}
 .topbar .ttl{font-size:18px;font-weight:700}
@@ -30,7 +28,6 @@ body{background:var(--bg);color:var(--ink);font:14px/1.5 -apple-system,BlinkMacS
 .datepick label{color:var(--muted);font-size:12px;font-weight:600}
 .datepick input{border:0;font:inherit;color:var(--ink);outline:none}
 .content{padding:20px 24px 48px;max-width:1080px;width:100%}
-/* controls */
 .controls{margin-bottom:8px}
 .seg{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden;background:#fff}
 .seg button{appearance:none;border:0;background:#fff;color:var(--muted);padding:7px 16px;font:inherit;font-weight:600;font-size:13px;cursor:pointer}
@@ -43,7 +40,7 @@ body{background:var(--bg);color:var(--ink);font:14px/1.5 -apple-system,BlinkMacS
 .pill button{appearance:none;border:0;background:#fff;color:#4b5563;padding:6px 12px;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer}
 .pill button.on{background:#eef2ff;color:var(--blue)}
 .cmp{color:var(--muted);font-size:12px;margin:14px 0 16px}
-/* kpis / panels */
+/* live dashboard */
 .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
 .kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:13px 14px}
 .kpi .lab{color:var(--muted);font-size:12px;font-weight:600}
@@ -54,24 +51,52 @@ body{background:var(--bg);color:var(--ink);font:14px/1.5 -apple-system,BlinkMacS
 .panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
 .panel h2{font-size:13px;margin:0 0 10px;font-weight:700;color:#374151}
 .chartbox{position:relative;height:240px}
-table{width:100%;border-collapse:collapse;font-size:13px}
-th,td{text-align:right;padding:8px 6px;border-bottom:1px solid var(--line);white-space:nowrap}
-th:first-child,td:first-child{text-align:left}
-thead th{color:var(--muted);font-weight:600;font-size:12px}
-td .d{font-size:11.5px;font-weight:700;margin-left:4px}
+.panel table{width:100%;border-collapse:collapse;font-size:13px}
+.panel th,.panel td{text-align:right;padding:8px 6px;border-bottom:1px solid var(--line);white-space:nowrap}
+.panel th:first-child,.panel td:first-child{text-align:left}
+.panel thead th{color:var(--muted);font-weight:600;font-size:12px}
+.panel td .d{font-size:11.5px;font-weight:700;margin-left:4px}
 .insights{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.ins{background:var(--card);border:1px solid var(--line);border-left:3px solid var(--brand);border-radius:10px;padding:12px 14px}
-.ins .t{font-weight:700;font-size:13px;margin-bottom:4px}
-.ins .b{color:#4b5563;font-size:12.5px}
-/* summary report header */
-.rephead{display:flex;align-items:flex-end;gap:14px;border-left:3px solid var(--brand);padding:2px 0 2px 12px;margin-bottom:18px}
+.insL{background:var(--card);border:1px solid var(--line);border-left:3px solid var(--brand);border-radius:10px;padding:12px 14px}
+.insL .t{font-weight:700;font-size:13px;margin-bottom:4px}
+.insL .b{color:#4b5563;font-size:12.5px}
+/* summary-report header */
+.rephead{display:flex;align-items:flex-end;gap:14px;border-left:3px solid var(--brand);padding:2px 0 2px 12px;margin-bottom:12px}
 .rephead .kick{color:var(--muted);font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase}
 .rephead .h{font-size:18px;font-weight:700}
 .rephead .h b{color:var(--blue)}
 .btn{appearance:none;border:1px solid var(--blue);color:var(--blue);background:#fff;border-radius:9px;padding:8px 14px;font:inherit;font-weight:600;font-size:13px;cursor:pointer}
-.lead{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px 18px;color:#374151;margin-bottom:18px}
-.sectit{font-size:14px;font-weight:700;margin:6px 0 10px}
-.sectit span{color:var(--muted);font-weight:600}
+/* ===== ported original report styling (scoped) ===== */
+.report .grid{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:6px;}
+.report .tile{flex:1;min-width:160px;background:#fff;border:1px solid #e7ebf0;border-radius:12px;padding:16px 18px;box-shadow:0 1px 2px rgba(20,30,50,.05);}
+.report .tile .k{font-size:12px;color:#6b7480;font-weight:600;}
+.report .tile .v{font-size:26px;font-weight:700;margin:4px 0 6px;}
+.report .chg{font-size:12.5px;font-weight:700;}
+.report .up{color:#2d7d46;} .report .down{color:#c0392b;} .report .flat{color:#6b7480;}
+.report .deltas{display:flex;gap:16px;}
+.report .d{display:flex;flex-direction:column;gap:1px;}
+.report .dl{font-size:9.5px;font-weight:700;color:#9aa3ad;letter-spacing:.05em;}
+.report .card{background:#fff;border:1px solid #e7ebf0;border-radius:12px;padding:18px 20px;margin:14px 0;box-shadow:0 1px 2px rgba(20,30,50,.05);}
+.report .card h2{font-size:14px;margin:0 0 12px;text-transform:uppercase;letter-spacing:.04em;color:#39424f;}
+.report .ins{display:flex;gap:10px;align-items:flex-start;margin:12px 0;font-size:13px;line-height:1.45;}
+.report .dot{width:9px;height:9px;border-radius:50%;margin-top:6px;flex:0 0 auto;}
+.report .ins b{display:block;font-size:10.5px;text-transform:uppercase;letter-spacing:.03em;color:#9aa3ad;margin-bottom:1px;}
+.report .ins .head{display:block;font-weight:700;font-size:14px;margin-bottom:2px;}
+.report .ins .detail{display:block;color:#5b6470;font-size:12.5px;}
+.report table{border-collapse:collapse;width:100%;font-size:13px;}
+.report th,.report td{padding:9px 11px;text-align:right;border-bottom:1px solid #eef1f4;white-space:nowrap;}
+.report th:first-child,.report td:first-child{text-align:left;}
+.report thead th{background:#f7f9fb;font-weight:600;color:#39424f;}
+.report th.an,.report td.an{background:#eef3ff;font-weight:700;}
+.report .fn{display:flex;align-items:center;gap:10px;margin:7px 0;font-size:13px;}
+.report .fn .name{width:150px;color:#39424f;}
+.report .fn .track{position:relative;flex:1;height:16px;background:#f0f3f7;border-radius:8px;}
+.report .fn .bar{position:absolute;top:0;height:16px;border-radius:8px;}
+.report .fn .mid{position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:#c4ccd6;}
+.report .fn .val{width:66px;text-align:right;font-weight:600;}
+.report .fn.div .name{font-weight:700;}
+.report .sub{color:#6b7480;font-size:12.5px;}
+.report ul.gaps{margin:4px 0;padding-left:18px;font-size:12px;color:#6b7480;}
 .foot{color:var(--muted);font-size:11.5px;margin-top:18px}
 .err{background:#fef2f2;border:1px solid #fecaca;color:#991b1b;border-radius:10px;padding:14px;margin:14px 0}
 .load{color:var(--muted);padding:40px 0;text-align:center}
@@ -99,16 +124,13 @@ td .d{font-size:11.5px;font-weight:700;margin-left:4px}
     <div class="topbar">
       <div class="ttl" id="ttl">Live Dashboard</div>
       <div class="spacer"></div>
-      <div class="datepick">
-        <label for="dp">Date</label>
-        <input type="date" id="dp">
-      </div>
+      <div class="datepick"><label for="dp">Date</label><input type="date" id="dp"></div>
     </div>
     <div class="content">
       <div class="controls" id="controls" style="display:none">
         <div class="seg" id="modeSeg">
-          <button data-m="weekly">Weekly</button>
           <button data-m="daily">Daily</button>
+          <button data-m="weekly">Weekly</button>
         </div>
         <div class="row2">
           <div class="ctl"><span class="cl">App</span><div class="pill" id="appPill"></div></div>
@@ -126,14 +148,21 @@ td .d{font-size:11.5px;font-weight:700;margin-left:4px}
 const APPCOL={all_app:"#2563eb",ymk:"#db2777",ycp:"#059669"};
 const nf=new Intl.NumberFormat("en-US");
 let INDEX=null, CACHE={}, charts=[];
-const S={page:"live",date:null,mode:"weekly",app:"all_app",cty:"all"};
+const S={page:"live",date:null,mode:"daily",app:"all_app",cty:"all"};
 try{ S.page=localStorage.getItem("pf_page")||"live"; }catch(e){}
 
-function fmtVal(metric,v){ return (metric==="app_total_revenue"?"$":"")+nf.format(Math.round(v)); }
-function pct(x){ return (x>=0?"+":"")+(x*100).toFixed(1)+"%"; }
-function cls(x){ return x>=0?"up":"down"; }
-function destroyCharts(){ charts.forEach(c=>{try{c.destroy()}catch(e){}}); charts=[]; }
+/* shared helpers */
 function last(a){ return a[a.length-1]; }
+function fmt(n){ return (n==null)?"n/a":Math.round(n).toLocaleString("en-US"); }
+function pctTxt(x){ return (x==null)?"n/a":((x>=0?"+":"")+(x*100).toFixed(1)+"%"); }
+function cl(x){ return (x==null)?"flat":(x>0?"up":(x<0?"down":"flat")); }
+function cls(x){ return x>=0?"up":"down"; }
+function pct(x){ return (x>=0?"+":"")+(x*100).toFixed(1)+"%"; }
+function median(a){const s=a.filter(v=>v!=null).slice().sort((p,q)=>p-q);if(!s.length)return null;const m=s.length>>1;return s.length%2?s[m]:(s[m-1]+s[m])/2;}
+function destroyCharts(){ charts.forEach(c=>{try{c.destroy()}catch(e){}}); charts=[]; }
+function appName(D,key){ const a=D.apps.find(x=>x[0]===key); return a?a[1]:key; }
+function ctyName(D,key){ const c=D.countries.find(x=>x[0]===key); return c?c[1]:key; }
+function weekRange(D){ const t=(D.date_cols||[]).find(c=>/^This/.test(c)); return t? t.replace(/^This\s*/,"").replace(/(\d\d-\d\d)-(\d\d-\d\d)/,"$1 – $2") : ""; }
 
 async function getReport(date){
   if(CACHE[date]) return CACHE[date];
@@ -141,100 +170,83 @@ async function getReport(date){
   if(!r.ok) throw new Error("No report file for "+date+" (HTTP "+r.status+")");
   CACHE[date]=await r.json(); return CACHE[date];
 }
-function modesFor(date){ const e=INDEX.dates.find(d=>d.date===date); return e?e.modes:[]; }
-
-function weekRange(D){
-  const t=(D.date_cols||[]).find(c=>/^This/.test(c));
-  return t? t.replace(/^This\s*/,"").replace(/(\d\d-\d\d)-(\d\d-\d\d)/,"$1 – $2") : "";
-}
+function resolveWeekly(date){ for(const d of (INDEX.weekly_dates||[])){ if(d<=date) return d; } return null; }
 
 /* ---------- control bar ---------- */
-function syncControls(rep){
+function syncControls(D,dailyAvail,weeklyAvail){
   document.getElementById("controls").style.display="block";
-  const modes=modesFor(S.date);
   document.querySelectorAll("#modeSeg button").forEach(b=>{
-    const ok=modes.includes(b.dataset.m);
+    const ok=b.dataset.m==="daily"?dailyAvail:weeklyAvail;
     b.disabled=!ok; b.classList.toggle("on",b.dataset.m===S.mode);
   });
-  const D=rep[S.mode].data;
-  // app pill
-  const ap=document.getElementById("appPill");
-  ap.innerHTML=D.apps.map(a=>`<button data-a="${a[0]}" class="${a[0]===S.app?'on':''}">${a[1]}</button>`).join("");
-  // country pill
-  const cp=document.getElementById("ctyPill");
-  cp.innerHTML=D.countries.map(c=>`<button data-c="${c[0]}" class="${c[0]===S.cty?'on':''}">${c[1]}</button>`).join("");
+  document.getElementById("appPill").innerHTML=D.apps.map(a=>`<button data-a="${a[0]}" class="${a[0]===S.app?'on':''}">${a[1]}</button>`).join("");
+  document.getElementById("ctyPill").innerHTML=D.countries.map(c=>`<button data-c="${c[0]}" class="${c[0]===S.cty?'on':''}">${c[1]}</button>`).join("");
   document.getElementById("cmp").textContent=(S.mode==="weekly"
-     ? "Comparison basis: this week vs last week (WoW)"
-     : "Comparison basis: analysis day vs same weekday last week (WoW)");
+     ? "Comparison: this week vs last week (WoW) + vs prior-4-week avg (Wo4W)"
+     : "Comparison: analysis day vs same weekday last week (WoW) + past-4-week avg (Wo4W)");
 }
 
-/* ---------- render dispatch ---------- */
+/* ---------- dispatch ---------- */
 async function refresh(){
   document.querySelectorAll("#nav a").forEach(a=>a.classList.toggle("on",a.dataset.page===S.page));
   document.getElementById("ttl").textContent=S.page==="live"?"Live Dashboard":"Summary Report";
-  const modes=modesFor(S.date);
-  if(modes.length && !modes.includes(S.mode)) S.mode=modes[0];
-  let rep;
-  try{ rep=await getReport(S.date); }
-  catch(e){
-    destroyCharts();
-    const avail=INDEX.dates.map(d=>d.date).join(", ");
-    document.getElementById("body").innerHTML='<div class="err"><b>No report for '+S.date+'.</b><br>'+
-      'Available dates: '+avail+'</div>';
-    document.getElementById("controls").style.display="none";
+  const dailyAvail=(INDEX.daily_dates||[]).includes(S.date);
+  const wkSrc=resolveWeekly(S.date), weeklyAvail=!!wkSrc;
+  if(S.mode==="daily" && !dailyAvail && weeklyAvail) S.mode="weekly";
+  if(S.mode==="weekly" && !weeklyAvail && dailyAvail) S.mode="daily";
+
+  let block,srcDate;
+  try{
+    if(S.mode==="daily"){ const rep=await getReport(S.date); block=rep.daily; srcDate=S.date; if(!block) throw new Error("No daily report for "+S.date); }
+    else { const rep=await getReport(wkSrc); block=rep.weekly; srcDate=wkSrc; if(!block) throw new Error("No weekly report on/before "+S.date); }
+  }catch(e){
+    destroyCharts(); document.getElementById("controls").style.display="none";
+    document.getElementById("body").innerHTML='<div class="err"><b>No report available.</b><br>'+(e.message||e)+
+      '<br><br>Available daily: '+(INDEX.daily_dates||[]).join(", ")+'<br>Available weekly: '+(INDEX.weekly_dates||[]).join(", ")+'</div>';
     return;
   }
-  if(!rep[S.mode]){ S.mode=(rep.weekly?"weekly":"daily"); }
-  // keep app/country valid
-  const D=rep[S.mode].data;
+  const D=block.data;
   if(!D.apps.some(a=>a[0]===S.app)) S.app="all_app";
   if(!D.countries.some(c=>c[0]===S.cty)) S.cty=D.countries[0][0];
-  syncControls(rep);
+  syncControls(D,dailyAvail,weeklyAvail);
   destroyCharts();
-  if(S.page==="live") renderLive(rep); else renderReport(rep);
-  document.getElementById("foot").textContent="Source: data-auto-analyzer / metric-analysis · this page reads the latest JSON committed in /docs/data.";
+  if(S.page==="live") renderLive(block,srcDate); else renderReport(block,srcDate);
+  document.getElementById("foot").textContent="Source: data-auto-analyzer / metric-analysis · reads the latest JSON committed in /docs/data."+
+    (S.mode==="weekly" && srcDate!==S.date ? "  ·  Weekly source: "+srcDate+" (most recent Monday report ≤ selected date)" : "");
 }
 
 /* ---------- Live Dashboard ---------- */
-function renderLive(rep){
-  const D=rep[S.mode].data, cube=D.cube, order=D.metric_order, lab=D.metric_labels, apps=D.apps;
+function renderLive(block){
+  const D=block.data, cube=D.cube, order=D.metric_order, lab=D.metric_labels, apps=D.apps;
   const sel=cube[S.app][S.cty];
   const kpis='<div class="kpis">'+order.map(m=>{
     const c=sel[m], v=last(c.vals), dd=c.wow;
-    return `<div class="kpi"><div class="lab">${lab[m]}</div><div class="val">${fmtVal(m,v)}</div><div class="delta ${cls(dd)}">${pct(dd)} <span style="color:var(--muted);font-weight:600">WoW</span></div></div>`;
+    return `<div class="kpi"><div class="lab">${lab[m]}</div><div class="val">${(m==="app_total_revenue"?"$":"")+nf.format(Math.round(v))}</div><div class="delta ${cls(dd)}">${pct(dd)} <span style="color:var(--muted);font-weight:600">WoW</span></div></div>`;
   }).join("")+'</div>';
-
   let thead="<tr><th>Metric</th>"+apps.map(a=>`<th>${a[1]}</th>`).join("")+"</tr>";
   let rows=order.map(m=>{
     let tds=apps.map(a=>{ const c=cube[a[0]][S.cty][m], v=last(c.vals);
-      return `<td>${fmtVal(m,v)}<span class="d ${cls(c.wow)}">${pct(c.wow)}</span></td>`; }).join("");
+      return `<td>${(m==="app_total_revenue"?"$":"")+nf.format(Math.round(v))}<span class="d ${cls(c.wow)}">${pct(c.wow)}</span></td>`; }).join("");
     return `<tr><td>${lab[m]}</td>${tds}</tr>`;
   }).join("");
   const table=`<table><thead>${thead}</thead><tbody>${rows}</tbody></table>`;
-
   const chartB = S.mode==="weekly"
     ? `<div class="panel"><h2>Revenue mix by app (this week)</h2><div class="chartbox"><canvas id="cB"></canvas></div></div>`
     : `<div class="panel"><h2>${appName(D,S.app)} daily trend (New Subs / Revenue)</h2><div class="chartbox"><canvas id="cB"></canvas></div></div>`;
-
-  const ins='<div class="insights">'+(rep[S.mode].insights||[]).map(o=>`<div class="ins"><div class="t">${o.title}</div><div class="b">${o.body}</div></div>`).join("")+'</div>';
-
+  const ins='<div class="insights">'+(block.insights||[]).map(o=>`<div class="insL"><div class="t">${o.title}</div><div class="b">${o.body}</div></div>`).join("")+'</div>';
   document.getElementById("body").innerHTML=
-    kpis+
-    '<div class="grid2"><div class="panel"><h2>WoW change by app (per metric)</h2><div class="chartbox"><canvas id="cA"></canvas></div></div>'+chartB+'</div>'+
+    kpis+'<div class="grid2"><div class="panel"><h2>WoW change by app (per metric)</h2><div class="chartbox"><canvas id="cA"></canvas></div></div>'+chartB+'</div>'+
     '<div class="panel" style="margin-bottom:16px"><h2>By app (value + WoW)</h2>'+table+'</div>'+ins;
-
-  drawWoW(cube,order,lab,apps,D.countries);
+  drawWoW(cube,order,lab,apps);
   if(S.mode==="weekly") drawShare(cube); else drawTrend(D);
 }
-function appName(D,key){ const a=D.apps.find(x=>x[0]===key); return a?a[1]:key; }
-function drawWoW(cube,order,lab,apps,countries){
+function drawWoW(cube,order,lab,apps){
   charts.push(new Chart(document.getElementById("cA"),{type:"bar",
     data:{labels:order.map(m=>lab[m].replace("App Total ","")),
       datasets:apps.map(a=>({label:a[1],backgroundColor:APPCOL[a[0]]||"#888",borderRadius:4,
         data:order.map(m=>+(cube[a[0]][S.cty][m].wow*100).toFixed(2))}))},
     options:{responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{position:"bottom",labels:{boxWidth:12}},
-        tooltip:{callbacks:{label:c=>c.dataset.label+": "+(c.parsed.y>=0?"+":"")+c.parsed.y+"%"}}},
+      plugins:{legend:{position:"bottom",labels:{boxWidth:12}},tooltip:{callbacks:{label:c=>c.dataset.label+": "+(c.parsed.y>=0?"+":"")+c.parsed.y+"%"}}},
       scales:{y:{ticks:{callback:v=>v+"%"},grid:{color:"#eef0f3"}},x:{grid:{display:false}}}}}));
 }
 function drawShare(cube){
@@ -242,8 +254,7 @@ function drawShare(cube){
   charts.push(new Chart(document.getElementById("cB"),{type:"doughnut",
     data:{labels:["YMK","YCP"],datasets:[{data:[ymk,ycp],backgroundColor:[APPCOL.ymk,APPCOL.ycp],borderWidth:0}]},
     options:{responsive:true,maintainAspectRatio:false,cutout:"58%",
-      plugins:{legend:{position:"bottom",labels:{boxWidth:12}},
-        tooltip:{callbacks:{label:c=>{const t=ymk+ycp;return c.label+": $"+nf.format(Math.round(c.parsed))+" ("+(c.parsed/t*100).toFixed(1)+"%)";}}}}}}));
+      plugins:{legend:{position:"bottom",labels:{boxWidth:12}},tooltip:{callbacks:{label:c=>{const t=ymk+ycp;return c.label+": $"+nf.format(Math.round(c.parsed))+" ("+(c.parsed/t*100).toFixed(1)+"%)";}}}}}}));
 }
 function drawTrend(D){
   const a=D.cube[S.app][S.cty];
@@ -253,66 +264,114 @@ function drawTrend(D){
       {type:"line",label:"Revenue",borderColor:APPCOL.all_app,backgroundColor:APPCOL.all_app,tension:.3,yAxisID:"y1",data:a.app_total_revenue.vals}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"bottom",labels:{boxWidth:12}}},
       scales:{y:{position:"left",title:{display:true,text:"New Subs"},grid:{color:"#eef0f3"}},
-        y1:{position:"right",title:{display:true,text:"Revenue"},grid:{display:false},ticks:{callback:v=>"$"+nf.format(v)}},
-        x:{grid:{display:false}}}}}));
+        y1:{position:"right",title:{display:true,text:"Revenue"},grid:{display:false},ticks:{callback:v=>"$"+nf.format(v)}},x:{grid:{display:false}}}}}));
 }
 
-/* ---------- Summary Report ---------- */
-function renderReport(rep){
-  const blk=rep[S.mode], D=blk.data, cube=D.cube, order=D.metric_order, lab=D.metric_labels, apps=D.apps;
-  const sel=cube[S.app][S.cty];
-  const modeWord=S.mode==="weekly"?"Weekly":"Daily";
-  const period=S.mode==="weekly"?weekRange(D):(last(D.date_cols)+" (analysis day, T-2)");
-
+/* ---------- Summary Report (faithful reproduction of the daily/weekly report) ---------- */
+function card(title,inner){ return `<div class="card"><h2>${title}</h2>${inner}</div>`; }
+function deltaChip(label,x){
+  if(x==null) return `<span class="d"><span class="dl">${label}</span><span class="chg flat">n/a</span></span>`;
+  const arr=x>0?"▲":(x<0?"▼":"■");
+  return `<span class="d"><span class="dl">${label}</span><span class="chg ${cl(x)}">${arr} ${pctTxt(x)}</span></span>`;
+}
+function insColor(title){
+  if(/^Forecast/i.test(title)) return {dot:"#3367d6",head:"#1a2330"};
+  if(/lead.?lag/i.test(title)) return {dot:"#2d7d46",head:"#2d7d46"};
+  return {dot:"#e67e22",head:"#e67e22"};
+}
+function execHtml(insights){
+  const rows=(insights||[]).map(o=>{
+    const c=insColor(o.title), i=o.title.indexOf(" — ");
+    const kick=i>=0?o.title.slice(0,i):"", head=i>=0?o.title.slice(i+3):o.title;
+    return `<div class="ins"><span class="dot" style="background:${c.dot}"></span><span><b>${kick}</b><span class="head" style="color:${c.head}">${head}</span><span class="detail">${o.body}</span></span></div>`;
+  }).join("");
+  return card("Executive Summary",rows);
+}
+function kpiHtml(s,D){
+  return '<div class="grid">'+D.metric_order.map(m=>{
+    const n=s[m], v=n?last(n.vals):null;
+    return `<div class="tile"><div class="k">${D.metric_labels[m]}</div><div class="v">${fmt(v)}</div><div class="deltas">${deltaChip("WoW",n?n.wow:null)}${deltaChip("Wo4W",n?n.wo4w:null)}</div></div>`;
+  }).join("")+'</div>';
+}
+function funnelHtml(s,D){
+  const lagged=new Set(D.lagged||[]);
+  const pts=D.metric_order.map(m=>[m, s[m]?s[m].p:null]);
+  const have=pts.map(x=>x[1]).filter(v=>v!=null);
+  const title="Funnel — same-period change by layer · "+appName(D,S.app)+" · "+ctyName(D,S.cty);
+  if(!have.length) return card(title,'<p class="sub" style="margin:0">No data for this slice.</p>');
+  const acq=pts.filter(([m,p])=>p!=null && !lagged.has(m)).map(x=>x[1]);
+  const cons=median(acq.length?acq:have), dth=D.divergence_threshold, scale=Math.max(...have.map(Math.abs),0.05);
+  let html=`<div class="sub" style="margin:-4px 0 10px">Acquisition consensus ${pctTxt(cons)} · orange outline = conversion diverges &gt; ${(dth*100).toFixed(0)}pp · lagged metric greyed</div>`;
+  html+=pts.map(([m,p])=>{
+    const labx=D.metric_labels[m]+(lagged.has(m)?" · lagged ~7d":"");
+    if(p==null) return `<div class="fn"><span class="name">${labx}</span><span class="track"><span class="mid"></span></span><span class="val flat">n/a</span></div>`;
+    const isLag=lagged.has(m), dv=!isLag && Math.abs(p-cons)>dth, half=Math.abs(p)/scale*50;
+    const col=isLag?"#9aa3ad":(p>=0?"#2d7d46":"#c0392b");
+    const st=(p>=0)?`left:50%;width:${half.toFixed(1)}%;background:${col};`:`left:${(50-half).toFixed(1)}%;width:${half.toFixed(1)}%;background:${col};`;
+    return `<div class="fn${dv?' div':''}"><span class="name"${isLag?' style="color:#9aa3ad"':''}>${labx}</span><span class="track"><span class="mid"></span><span class="bar" style="${st}${dv?'outline:2px solid #e67e22;':''}"></span></span><span class="val ${isLag?'flat':cl(p)}">${pctTxt(p)}</span></div>`;
+  }).join("");
+  return card(title,html);
+}
+function detailHtml(s,D){
+  const cols=D.date_cols, daily=D.mode=="daily", anIdx=cols.length-1;
+  const avgHdr=daily?"Past-4wk avg (Wo4W)":"Prior-4wk avg (Wo4W)";
+  const head="<tr><th>Metric</th>"+cols.map((c,i)=>`<th class="${daily&&i==anIdx?'an':''}">${c}${daily&&i==anIdx?'<br><span style="font-weight:400">analysis</span>':''}</th>`).join("")+`<th>${avgHdr}</th><th>WoW Δ%</th><th>Wo4W Δ%</th></tr>`;
+  const dcell=x=>`<td><span class="chg ${cl(x)}">${pctTxt(x)}</span></td>`;
+  const rows=D.metric_order.map(m=>{
+    const n=s[m];
+    if(!n) return `<tr><td>${D.metric_labels[m]}</td>`+cols.map(()=>'<td class="flat">—</td>').join("")+'<td class="flat">—</td><td class="flat">n/a</td><td class="flat">n/a</td></tr>';
+    const cells=n.vals.map((v,i)=>`<td class="${daily&&i==anIdx?'an':''}">${fmt(v)}</td>`).join("");
+    return `<tr><td>${D.metric_labels[m]}</td>${cells}<td>${fmt(n.mean)}</td>${dcell(n.wow)}${dcell(n.wo4w)}</tr>`;
+  }).join("");
+  const h2=daily?"Analysis day vs WoW (last week) & Wo4W (past-4-week avg)":"This week vs WoW (prior week) & Wo4W (prior-4-week avg)";
+  return card(h2+" · "+appName(D,S.app)+" · "+ctyName(D,S.cty),`<table><thead>${head}</thead><tbody>${rows}</tbody></table>`);
+}
+function byAppHtml(D){
+  const cty="all", clbl=ctyName(D,"all");
+  let thead="<tr><th>Metric</th>"+D.apps.map(a=>`<th>${a[1]}</th>`).join("")+"</tr>";
+  let rows=D.metric_order.map(m=>{
+    let tds=D.apps.map(a=>{ const n=(D.cube[a[0]]||{})[cty]?D.cube[a[0]][cty][m]:null;
+      if(!n) return '<td class="flat">n/a</td>';
+      return `<td>${fmt(last(n.vals))}<br><span class="chg ${cl(n.p)}">${pctTxt(n.p)}</span></td>`; }).join("");
+    return `<tr><td>${D.metric_labels[m]}</td>${tds}</tr>`;
+  }).join("");
+  return card("Total — by app (country = "+clbl+")",`<table><thead>${thead}</thead><tbody>${rows}</tbody></table>`);
+}
+function byCountryHtml(D){
+  return card("By Country",'<p class="sub" style="margin:0">No by-country views provided yet — fill the country rows in <code>metric_views_full.csv</code> to enable this section.</p>');
+}
+function dataGapsHtml(s,D){
+  const gaps=D.metric_order.filter(m=>!s[m]).map(m=>D.metric_labels[m]);
+  return card("Data gaps disclosed", gaps.length?('<ul class="gaps">'+gaps.map(g=>`<li>${g}</li>`).join("")+'</ul>'):'<p>None.</p>');
+}
+function renderReport(block,srcDate){
+  const D=block.data, s=D.cube[S.app][S.cty];
+  const modeWord=D.mode=="weekly"?"Weekly":"Daily";
+  const period=D.mode=="weekly"?weekRange(D):(last(D.date_cols)+" (analysis day, T-2)");
   const head=`<div class="rephead"><div>
       <div class="kick">Trending Report</div>
-      <div class="h">${modeWord} report for <b>${appName(D,S.app)}</b> <span style="color:var(--muted)">(${S.date})</span></div>
-    </div><div style="flex:1"></div>
-    <button class="btn" onclick="window.print()">⬇ Download PDF</button></div>`;
-
-  // KPI strip for selected app
-  const kpis='<div class="kpis">'+order.map(m=>{const c=sel[m];
-    return `<div class="kpi"><div class="lab">${lab[m]}</div><div class="val">${fmtVal(m,last(c.vals))}</div><div class="delta ${cls(c.wow)}">${pct(c.wow)} WoW</div></div>`;}).join("")+'</div>';
-
-  // Summary lead = first insight body (or synthesized)
-  const insights=blk.insights||[];
-  const lead=insights.length? `<div class="lead"><b>Summary.</b> ${insights[0].body}</div>`
-    : `<div class="lead">No narrative summary available for this report.</div>`;
-
-  // Insight cards (like clusters)
-  const insHtml='<div class="sectit">Insights <span>('+insights.length+')</span></div><div class="insights">'+
-    insights.map(o=>`<div class="ins"><div class="t">${o.title}</div><div class="b">${o.body}</div></div>`).join("")+'</div>';
-
-  // detail table
-  let thead="<tr><th>Metric</th>"+apps.map(a=>`<th>${a[1]}</th>`).join("")+"</tr>";
-  let rows=order.map(m=>{let tds=apps.map(a=>{const c=cube[a[0]][S.cty][m];
-      return `<td>${fmtVal(m,last(c.vals))}<span class="d ${cls(c.wow)}">${pct(c.wow)}</span></td>`;}).join("");
-    return `<tr><td>${lab[m]}</td>${tds}</tr>`;}).join("");
-  const table='<div class="sectit" style="margin-top:22px">Metrics by app — country '+ctyName(D,S.cty)+'</div><div class="panel">'+
-    `<table><thead>${thead}</thead><tbody>${rows}</tbody></table></div>`;
-
-  document.getElementById("body").innerHTML=head+
-    '<div class="cmp" style="margin-top:0">Period: '+period+' · Comparison: '+(S.mode==="weekly"?"WoW (vs last week)":"WoW (vs same weekday last week)")+'</div>'+
-    kpis+lead+insHtml+table;
+      <div class="h">${modeWord} report for <b>${appName(D,S.app)}</b> <span style="color:var(--muted)">(${srcDate})</span></div>
+    </div><div style="flex:1"></div><button class="btn" onclick="window.print()">⬇ Download PDF</button></div>`;
+  const meta='<div class="cmp" style="margin-top:0">Period: '+period+' · Country: '+ctyName(D,S.cty)+(D.mode=="weekly"&&srcDate!==S.date?(' · weekly source '+srcDate):'')+'</div>';
+  document.getElementById("body").innerHTML=head+meta+'<div class="report">'+
+    kpiHtml(s,D)+execHtml(block.insights)+funnelHtml(s,D)+detailHtml(s,D)+byAppHtml(D)+byCountryHtml(D)+dataGapsHtml(s,D)+'</div>';
 }
-function ctyName(D,key){ const c=D.countries.find(x=>x[0]===key); return c?c[1]:key; }
 
 /* ---------- events ---------- */
-document.getElementById("nav").addEventListener("click",e=>{const a=e.target.closest("a[data-page]");if(!a)return;
-  S.page=a.dataset.page; try{localStorage.setItem("pf_page",S.page)}catch(x){}; refresh();});
+document.getElementById("nav").addEventListener("click",e=>{const a=e.target.closest("a[data-page]");if(!a)return;S.page=a.dataset.page;try{localStorage.setItem("pf_page",S.page)}catch(x){};refresh();});
 document.getElementById("modeSeg").addEventListener("click",e=>{const b=e.target.closest("button");if(!b||b.disabled)return;S.mode=b.dataset.m;refresh();});
 document.getElementById("appPill").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;S.app=b.dataset.a;refresh();});
 document.getElementById("ctyPill").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;S.cty=b.dataset.c;refresh();});
-document.getElementById("dp").addEventListener("change",e=>{ if(e.target.value){S.date=e.target.value;CACHE[S.date]&&0;refresh();}});
+document.getElementById("dp").addEventListener("change",e=>{if(e.target.value){S.date=e.target.value;refresh();}});
 
 (async()=>{
   try{
     INDEX=await (await fetch("./data/index.json",{cache:"no-store"})).json();
     if(!INDEX.dates||!INDEX.dates.length) throw new Error("No reports indexed.");
-    S.date=INDEX.dates[0].date;
+    S.date=INDEX.latest_daily||INDEX.dates[0].date;
+    S.mode="daily";
     const dp=document.getElementById("dp");
     dp.value=S.date; dp.max=INDEX.dates[0].date; dp.min=INDEX.dates[INDEX.dates.length-1].date;
-    if(!modesFor(S.date).includes(S.mode)) S.mode=modesFor(S.date)[0];
     document.querySelectorAll("#nav a").forEach(a=>a.classList.toggle("on",a.dataset.page===S.page));
     await refresh();
   }catch(e){
