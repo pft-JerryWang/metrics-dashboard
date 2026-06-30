@@ -16,7 +16,8 @@ html,body{margin:0;height:100%}
 body{background:var(--bg);color:var(--ink);font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;}
 .app{display:flex;min-height:100vh}
 .side{width:212px;flex:none;background:#fff;border-right:1px solid var(--line);padding:18px 14px;position:sticky;top:0;height:100vh}
-.brand{font-weight:800;letter-spacing:3px;color:var(--brand);font-size:20px;padding:4px 8px 18px}
+.brand{padding:4px 8px 18px}
+.brand img{height:28px;width:auto;display:block}
 .nav a{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:9px;color:#374151;text-decoration:none;font-weight:600;font-size:13.5px;cursor:pointer;margin-bottom:4px}
 .nav a:hover{background:#f3f4f6}
 .nav a.on{background:#fde7f1;color:var(--brand)}
@@ -108,7 +109,7 @@ body{background:var(--bg);color:var(--ink);font:14px/1.5 -apple-system,BlinkMacS
 <body>
 <div class="app">
   <aside class="side">
-    <div class="brand">PERFECT</div>
+    <div class="brand"><img src="https://d3ss46vukfdtpo.cloudfront.net/static/media/PERFECT_logo_newcolor.ff00d06d.svg" alt="PERFECT"></div>
     <nav class="nav" id="nav">
       <a data-page="live" class="on">
         <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 3 4-5"/></svg>
