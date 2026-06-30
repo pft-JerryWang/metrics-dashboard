@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PERFECT · App Metrics Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js"></script>
+<style>
+:root{ color-scheme: light;
+  --bg:#f5f6f8; --card:#ffffff; --ink:#111827; --muted:#6b7280; --line:#e5e7eb;
+  --brand:#e11d74; --blue:#2563eb; --pink:#db2777; --green:#059669; --red:#dc2626;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--ink);font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;}
+.app{display:flex;min-height:100vh}
+/* sidebar */
+.side{width:212px;flex:none;background:#fff;border-right:1px solid var(--line);padding:18px 14px;position:sticky;top:0;height:100vh}
+.brand{font-weight:800;letter-spacing:3px;color:var(--brand);font-size:20px;padding:4px 8px 18px}
+.nav a{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:9px;color:#374151;text-decoration:none;font-weight:600;font-size:13.5px;cursor:pointer;margin-bottom:4px}
+.nav a:hover{background:#f3f4f6}
+.nav a.on{background:#fde7f1;color:var(--brand)}
+.nav .ic{width:16px;height:16px;flex:none}
+/* main */
+.main{flex:1;min-width:0;display:flex;flex-direction:column}
+.topbar{display:flex;align-items:center;gap:14px;padding:16px 24px;border-bottom:1px solid var(--line);background:#fff}
+.topbar .ttl{font-size:18px;font-weight:700}
+.topbar .spacer{flex:1}
+.datepick{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:9px;padding:6px 10px;background:#fff}
+.datepick label{color:var(--muted);font-size:12px;font-weight:600}
+.datepick input{border:0;font:inherit;color:var(--ink);outline:none}
+.content{padding:20px 24px 48px;max-width:1080px;width:100%}
+/* controls */
+.controls{margin-bottom:8px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden;background:#fff}
+.seg button{appearance:none;border:0;background:#fff;color:var(--muted);padding:7px 16px;font:inherit;font-weight:600;font-size:13px;cursor:pointer}
+.seg button.on{background:var(--ink);color:#fff}
+.seg button:disabled{color:#cbd1d9;cursor:not-allowed}
+.row2{display:flex;flex-wrap:wrap;gap:10px 22px;align-items:center;margin-top:10px}
+.ctl{display:flex;align-items:center;gap:8px}
+.ctl .cl{color:var(--muted);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.4px}
+.pill{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.pill button{appearance:none;border:0;background:#fff;color:#4b5563;padding:6px 12px;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer}
+.pill button.on{background:#eef2ff;color:var(--blue)}
+.cmp{color:var(--muted);font-size:12px;margin:14px 0 16px}
+/* kpis / panels */
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:13px 14px}
+.kpi .lab{color:var(--muted);font-size:12px;font-weight:600}
+.kpi .val{font-size:23px;font-weight:700;margin:5px 0 2px;letter-spacing:-.3px}
+.delta{font-size:12.5px;font-weight:700}
+.up{color:var(--green)} .down{color:var(--red)}
+.grid2{display:grid;grid-template-columns:1.35fr 1fr;gap:14px;margin-bottom:16px}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.panel h2{font-size:13px;margin:0 0 10px;font-weight:700;color:#374151}
+.chartbox{position:relative;height:240px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:right;padding:8px 6px;border-bottom:1px solid var(--line);white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+thead th{color:var(--muted);font-weight:600;font-size:12px}
+td .d{font-size:11.5px;font-weight:700;margin-left:4px}
+.insights{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.ins{background:var(--card);border:1px solid var(--line);border-left:3px solid var(--brand);border-radius:10px;padding:12px 14px}
+.ins .t{font-weight:700;font-size:13px;margin-bottom:4px}
+.ins .b{color:#4b5563;font-size:12.5px}
+/* summary report header */
+.rephead{display:flex;align-items:flex-end;gap:14px;border-left:3px solid var(--brand);padding:2px 0 2px 12px;margin-bottom:18px}
+.rephead .kick{color:var(--muted);font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase}
+.rephead .h{font-size:18px;font-weight:700}
+.rephead .h b{color:var(--blue)}
+.btn{appearance:none;border:1px solid var(--blue);color:var(--blue);background:#fff;border-radius:9px;padding:8px 14px;font:inherit;font-weight:600;font-size:13px;cursor:pointer}
+.lead{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px 18px;color:#374151;margin-bottom:18px}
+.sectit{font-size:14px;font-weight:700;margin:6px 0 10px}
+.sectit span{color:var(--muted);font-weight:600}
+.foot{color:var(--muted);font-size:11.5px;margin-top:18px}
+.err{background:#fef2f2;border:1px solid #fecaca;color:#991b1b;border-radius:10px;padding:14px;margin:14px 0}
+.load{color:var(--muted);padding:40px 0;text-align:center}
+@media(max-width:820px){.side{display:none}.kpis{grid-template-columns:repeat(2,1fr)}.grid2{grid-template-columns:1fr}.insights{grid-template-columns:1fr}}
+@media print{.side,.topbar .datepick,.controls,.btn{display:none!important}.topbar{border:0}}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <div class="brand">PERFECT</div>
+    <nav class="nav" id="nav">
+      <a data-page="live" class="on">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 3 4-5"/></svg>
+        Live Dashboard
+      </a>
+      <a data-page="report">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2h9l5 5v15H6z"/><path d="M14 2v6h6"/><path d="M9 13h6M9 17h6"/></svg>
+        Summary Report
+      </a>
+    </nav>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="ttl" id="ttl">Live Dashboard</div>
+      <div class="spacer"></div>
+      <div class="datepick">
+        <label for="dp">Date</label>
+        <input type="date" id="dp">
+      </div>
+    </div>
+    <div class="content">
+      <div class="controls" id="controls" style="display:none">
+        <div class="seg" id="modeSeg">
+          <button data-m="weekly">Weekly</button>
+          <button data-m="daily">Daily</button>
+        </div>
+        <div class="row2">
+          <div class="ctl"><span class="cl">App</span><div class="pill" id="appPill"></div></div>
+          <div class="ctl"><span class="cl">Country</span><div class="pill" id="ctyPill"></div></div>
+        </div>
+        <div class="cmp" id="cmp"></div>
+      </div>
+      <div id="body"><div class="load">Loading latest data…</div></div>
+      <div class="foot" id="foot"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const APPCOL={all_app:"#2563eb",ymk:"#db2777",ycp:"#059669"};
+const nf=new Intl.NumberFormat("en-US");
+let INDEX=null, CACHE={}, charts=[];
+const S={page:"live",date:null,mode:"weekly",app:"all_app",cty:"all"};
+try{ S.page=localStorage.getItem("pf_page")||"live"; }catch(e){}
+
+function fmtVal(metric,v){ return (metric==="app_total_revenue"?"$":"")+nf.format(Math.round(v)); }
+function pct(x){ return (x>=0?"+":"")+(x*100).toFixed(1)+"%"; }
+function cls(x){ return x>=0?"up":"down"; }
+function destroyCharts(){ charts.forEach(c=>{try{c.destroy()}catch(e){}}); charts=[]; }
+function last(a){ return a[a.length-1]; }
+
+async function getReport(date){
+  if(CACHE[date]) return CACHE[date];
+  const r=await fetch("./data/report_"+date+".json",{cache:"no-store"});
+  if(!r.ok) throw new Error("No report file for "+date+" (HTTP "+r.status+")");
+  CACHE[date]=await r.json(); return CACHE[date];
+}
+function modesFor(date){ const e=INDEX.dates.find(d=>d.date===date); return e?e.modes:[]; }
+
+function weekRange(D){
+  const t=(D.date_cols||[]).find(c=>/^This/.test(c));
+  return t? t.replace(/^This\s*/,"").replace(/(\d\d-\d\d)-(\d\d-\d\d)/,"$1 – $2") : "";
+}
+
+/* ---------- control bar ---------- */
+function syncControls(rep){
+  document.getElementById("controls").style.display="block";
+  const modes=modesFor(S.date);
+  document.querySelectorAll("#modeSeg button").forEach(b=>{
+    const ok=modes.includes(b.dataset.m);
+    b.disabled=!ok; b.classList.toggle("on",b.dataset.m===S.mode);
+  });
+  const D=rep[S.mode].data;
+  // app pill
+  const ap=document.getElementById("appPill");
+  ap.innerHTML=D.apps.map(a=>`<button data-a="${a[0]}" class="${a[0]===S.app?'on':''}">${a[1]}</button>`).join("");
+  // country pill
+  const cp=document.getElementById("ctyPill");
+  cp.innerHTML=D.countries.map(c=>`<button data-c="${c[0]}" class="${c[0]===S.cty?'on':''}">${c[1]}</button>`).join("");
+  document.getElementById("cmp").textContent=(S.mode==="weekly"
+     ? "Comparison basis: this week vs last week (WoW)"
+     : "Comparison basis: analysis day vs same weekday last week (WoW)");
+}
+
+/* ---------- render dispatch ---------- */
+async function refresh(){
+  document.querySelectorAll("#nav a").forEach(a=>a.classList.toggle("on",a.dataset.page===S.page));
+  document.getElementById("ttl").textContent=S.page==="live"?"Live Dashboard":"Summary Report";
+  const modes=modesFor(S.date);
+  if(modes.length && !modes.includes(S.mode)) S.mode=modes[0];
+  let rep;
+  try{ rep=await getReport(S.date); }
+  catch(e){
+    destroyCharts();
+    const avail=INDEX.dates.map(d=>d.date).join(", ");
+    document.getElementById("body").innerHTML='<div class="err"><b>No report for '+S.date+'.</b><br>'+
+      'Available dates: '+avail+'</div>';
+    document.getElementById("controls").style.display="none";
+    return;
+  }
+  if(!rep[S.mode]){ S.mode=(rep.weekly?"weekly":"daily"); }
+  // keep app/country valid
+  const D=rep[S.mode].data;
+  if(!D.apps.some(a=>a[0]===S.app)) S.app="all_app";
+  if(!D.countries.some(c=>c[0]===S.cty)) S.cty=D.countries[0][0];
+  syncControls(rep);
+  destroyCharts();
+  if(S.page==="live") renderLive(rep); else renderReport(rep);
+  document.getElementById("foot").textContent="Source: data-auto-analyzer / metric-analysis · this page reads the latest JSON committed in /docs/data.";
+}
+
+/* ---------- Live Dashboard ---------- */
+function renderLive(rep){
+  const D=rep[S.mode].data, cube=D.cube, order=D.metric_order, lab=D.metric_labels, apps=D.apps;
+  const sel=cube[S.app][S.cty];
+  const kpis='<div class="kpis">'+order.map(m=>{
+    const c=sel[m], v=last(c.vals), dd=c.wow;
+    return `<div class="kpi"><div class="lab">${lab[m]}</div><div class="val">${fmtVal(m,v)}</div><div class="delta ${cls(dd)}">${pct(dd)} <span style="color:var(--muted);font-weight:600">WoW</span></div></div>`;
+  }).join("")+'</div>';
+
+  let thead="<tr><th>Metric</th>"+apps.map(a=>`<th>${a[1]}</th>`).join("")+"</tr>";
+  let rows=order.map(m=>{
+    let tds=apps.map(a=>{ const c=cube[a[0]][S.cty][m], v=last(c.vals);
+      return `<td>${fmtVal(m,v)}<span class="d ${cls(c.wow)}">${pct(c.wow)}</span></td>`; }).join("");
+    return `<tr><td>${lab[m]}</td>${tds}</tr>`;
+  }).join("");
+  const table=`<table><thead>${thead}</thead><tbody>${rows}</tbody></table>`;
+
+  const chartB = S.mode==="weekly"
+    ? `<div class="panel"><h2>Revenue mix by app (this week)</h2><div class="chartbox"><canvas id="cB"></canvas></div></div>`
+    : `<div class="panel"><h2>${appName(D,S.app)} daily trend (New Subs / Revenue)</h2><div class="chartbox"><canvas id="cB"></canvas></div></div>`;
+
+  const ins='<div class="insights">'+(rep[S.mode].insights||[]).map(o=>`<div class="ins"><div class="t">${o.title}</div><div class="b">${o.body}</div></div>`).join("")+'</div>';
+
+  document.getElementById("body").innerHTML=
+    kpis+
+    '<div class="grid2"><div class="panel"><h2>WoW change by app (per metric)</h2><div class="chartbox"><canvas id="cA"></canvas></div></div>'+chartB+'</div>'+
+    '<div class="panel" style="margin-bottom:16px"><h2>By app (value + WoW)</h2>'+table+'</div>'+ins;
+
+  drawWoW(cube,order,lab,apps,D.countries);
+  if(S.mode==="weekly") drawShare(cube); else drawTrend(D);
+}
+function appName(D,key){ const a=D.apps.find(x=>x[0]===key); return a?a[1]:key; }
+function drawWoW(cube,order,lab,apps,countries){
+  charts.push(new Chart(document.getElementById("cA"),{type:"bar",
+    data:{labels:order.map(m=>lab[m].replace("App Total ","")),
+      datasets:apps.map(a=>({label:a[1],backgroundColor:APPCOL[a[0]]||"#888",borderRadius:4,
+        data:order.map(m=>+(cube[a[0]][S.cty][m].wow*100).toFixed(2))}))},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:"bottom",labels:{boxWidth:12}},
+        tooltip:{callbacks:{label:c=>c.dataset.label+": "+(c.parsed.y>=0?"+":"")+c.parsed.y+"%"}}},
+      scales:{y:{ticks:{callback:v=>v+"%"},grid:{color:"#eef0f3"}},x:{grid:{display:false}}}}}));
+}
+function drawShare(cube){
+  const ymk=last(cube.ymk[S.cty].app_total_revenue.vals), ycp=last(cube.ycp[S.cty].app_total_revenue.vals);
+  charts.push(new Chart(document.getElementById("cB"),{type:"doughnut",
+    data:{labels:["YMK","YCP"],datasets:[{data:[ymk,ycp],backgroundColor:[APPCOL.ymk,APPCOL.ycp],borderWidth:0}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:"58%",
+      plugins:{legend:{position:"bottom",labels:{boxWidth:12}},
+        tooltip:{callbacks:{label:c=>{const t=ymk+ycp;return c.label+": $"+nf.format(Math.round(c.parsed))+" ("+(c.parsed/t*100).toFixed(1)+"%)";}}}}}}));
+}
+function drawTrend(D){
+  const a=D.cube[S.app][S.cty];
+  charts.push(new Chart(document.getElementById("cB"),{
+    data:{labels:D.date_cols,datasets:[
+      {type:"bar",label:"New Subs",backgroundColor:"#93c5fd",borderRadius:4,yAxisID:"y",data:a.app_total_new_subs.vals},
+      {type:"line",label:"Revenue",borderColor:APPCOL.all_app,backgroundColor:APPCOL.all_app,tension:.3,yAxisID:"y1",data:a.app_total_revenue.vals}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"bottom",labels:{boxWidth:12}}},
+      scales:{y:{position:"left",title:{display:true,text:"New Subs"},grid:{color:"#eef0f3"}},
+        y1:{position:"right",title:{display:true,text:"Revenue"},grid:{display:false},ticks:{callback:v=>"$"+nf.format(v)}},
+        x:{grid:{display:false}}}}}));
+}
+
+/* ---------- Summary Report ---------- */
+function renderReport(rep){
+  const blk=rep[S.mode], D=blk.data, cube=D.cube, order=D.metric_order, lab=D.metric_labels, apps=D.apps;
+  const sel=cube[S.app][S.cty];
+  const modeWord=S.mode==="weekly"?"Weekly":"Daily";
+  const period=S.mode==="weekly"?weekRange(D):(last(D.date_cols)+" (analysis day, T-2)");
+
+  const head=`<div class="rephead"><div>
+      <div class="kick">Trending Report</div>
+      <div class="h">${modeWord} report for <b>${appName(D,S.app)}</b> <span style="color:var(--muted)">(${S.date})</span></div>
+    </div><div style="flex:1"></div>
+    <button class="btn" onclick="window.print()">⬇ Download PDF</button></div>`;
+
+  // KPI strip for selected app
+  const kpis='<div class="kpis">'+order.map(m=>{const c=sel[m];
+    return `<div class="kpi"><div class="lab">${lab[m]}</div><div class="val">${fmtVal(m,last(c.vals))}</div><div class="delta ${cls(c.wow)}">${pct(c.wow)} WoW</div></div>`;}).join("")+'</div>';
+
+  // Summary lead = first insight body (or synthesized)
+  const insights=blk.insights||[];
+  const lead=insights.length? `<div class="lead"><b>Summary.</b> ${insights[0].body}</div>`
+    : `<div class="lead">No narrative summary available for this report.</div>`;
+
+  // Insight cards (like clusters)
+  const insHtml='<div class="sectit">Insights <span>('+insights.length+')</span></div><div class="insights">'+
+    insights.map(o=>`<div class="ins"><div class="t">${o.title}</div><div class="b">${o.body}</div></div>`).join("")+'</div>';
+
+  // detail table
+  let thead="<tr><th>Metric</th>"+apps.map(a=>`<th>${a[1]}</th>`).join("")+"</tr>";
+  let rows=order.map(m=>{let tds=apps.map(a=>{const c=cube[a[0]][S.cty][m];
+      return `<td>${fmtVal(m,last(c.vals))}<span class="d ${cls(c.wow)}">${pct(c.wow)}</span></td>`;}).join("");
+    return `<tr><td>${lab[m]}</td>${tds}</tr>`;}).join("");
+  const table='<div class="sectit" style="margin-top:22px">Metrics by app — country '+ctyName(D,S.cty)+'</div><div class="panel">'+
+    `<table><thead>${thead}</thead><tbody>${rows}</tbody></table></div>`;
+
+  document.getElementById("body").innerHTML=head+
+    '<div class="cmp" style="margin-top:0">Period: '+period+' · Comparison: '+(S.mode==="weekly"?"WoW (vs last week)":"WoW (vs same weekday last week)")+'</div>'+
+    kpis+lead+insHtml+table;
+}
+function ctyName(D,key){ const c=D.countries.find(x=>x[0]===key); return c?c[1]:key; }
+
+/* ---------- events ---------- */
+document.getElementById("nav").addEventListener("click",e=>{const a=e.target.closest("a[data-page]");if(!a)return;
+  S.page=a.dataset.page; try{localStorage.setItem("pf_page",S.page)}catch(x){}; refresh();});
+document.getElementById("modeSeg").addEventListener("click",e=>{const b=e.target.closest("button");if(!b||b.disabled)return;S.mode=b.dataset.m;refresh();});
+document.getElementById("appPill").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;S.app=b.dataset.a;refresh();});
+document.getElementById("ctyPill").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;S.cty=b.dataset.c;refresh();});
+document.getElementById("dp").addEventListener("change",e=>{ if(e.target.value){S.date=e.target.value;CACHE[S.date]&&0;refresh();}});
+
+(async()=>{
+  try{
+    INDEX=await (await fetch("./data/index.json",{cache:"no-store"})).json();
+    if(!INDEX.dates||!INDEX.dates.length) throw new Error("No reports indexed.");
+    S.date=INDEX.dates[0].date;
+    const dp=document.getElementById("dp");
+    dp.value=S.date; dp.max=INDEX.dates[0].date; dp.min=INDEX.dates[INDEX.dates.length-1].date;
+    if(!modesFor(S.date).includes(S.mode)) S.mode=modesFor(S.date)[0];
+    document.querySelectorAll("#nav a").forEach(a=>a.classList.toggle("on",a.dataset.page===S.page));
+    await refresh();
+  }catch(e){
+    document.getElementById("body").innerHTML='<div class="err"><b>Could not load data.</b><br>'+(e&&e.message||e)+
+      '<br><br>Ensure <code>/docs/data/index.json</code> exists and GitHub Pages is enabled.</div>';
+  }
+})();
+</script>
+</body>
+</html>
