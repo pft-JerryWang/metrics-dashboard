@@ -326,22 +326,18 @@ function convCells(D,s,upKey,downKey){
     const rs=[]; for(let k=0;k<ai;k++){const r=rate(d.vals[k],u.vals[k]); if(r!=null) rs.push(r);}
     if(rs.length) w4Base=rs.reduce((a,b)=>a+b,0)/rs.length;
   } else { w4Base=rate(d.mean,u.mean); }
-  return {now, wow:(now!=null&&wowBase!=null)?now-wowBase:null,
-               wo4w:(now!=null&&w4Base!=null)?now-w4Base:null};
-}
-function ppChip(label,x){
-  if(x==null) return `<span class="d"><span class="dl">${label}</span><span class="chg flat">n/a</span></span>`;
-  const arr=x>0?"▲":(x<0?"▼":"■"), c=x>0?"up":(x<0?"down":"flat");
-  return `<span class="d"><span class="dl">${label}</span><span class="chg ${c}">${arr} ${(x>=0?"+":"")+(x*100).toFixed(1)}pp</span></span>`;
+  // WoW / Wo4W as relative % change (same unit as the KPI tiles), not pp.
+  return {now, wow:(now!=null&&wowBase)?(now-wowBase)/wowBase:null,
+               wo4w:(now!=null&&w4Base)?(now-w4Base)/w4Base:null};
 }
 function convConnector(D,s,upKey,downKey){
   const c=convCells(D,s,upKey,downKey);
   const rateTxt=(c&&c.now!=null)?(c.now*100).toFixed(1)+"%":"n/a";
   const shrt=k=>D.metric_labels[k].replace("App Total ","");
-  return `<div class="conv"><div class="carrow">▸</div><div class="ck">${shrt(upKey)} → ${shrt(downKey)}<br>conversion</div><div class="cv">${rateTxt}</div><div class="deltas">${ppChip("WoW",c?c.wow:null)}${ppChip("Wo4W",c?c.wo4w:null)}</div></div>`;
+  return `<div class="conv"><div class="carrow">▸</div><div class="ck">${shrt(upKey)} → ${shrt(downKey)}<br>conversion</div><div class="cv">${rateTxt}</div><div class="deltas">${deltaChip("WoW",c?c.wow:null)}${deltaChip("Wo4W",c?c.wo4w:null)}</div></div>`;
 }
 /* Insert a conversion connector after these upstream tiles (up → next count layer). */
-const CONV_AFTER={app_total_new_user:"app_total_install", app_total_install:"app_total_new_subs"};
+const CONV_AFTER={app_total_install:"app_total_new_subs"};
 function kpiHtml(s,D){
   const parts=[];
   D.metric_order.forEach(m=>{
