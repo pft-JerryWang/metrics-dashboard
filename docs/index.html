@@ -97,6 +97,9 @@ body{background:var(--bg);color:var(--ink);font:14px/1.5 -apple-system,BlinkMacS
 .report th:first-child,.report td:first-child{text-align:left;}
 .report thead th{background:#f7f9fb;font-weight:600;color:#39424f;}
 .report th.an,.report td.an{background:#eef3ff;font-weight:700;}
+.report tr.convrow td{background:#f7faff;}
+.report tr.convrow td.an{background:#e6efff;}
+.report tr.convrow td:first-child{color:#2563eb;font-weight:600;}
 .report .fn{display:flex;align-items:center;gap:10px;margin:7px 0;font-size:13px;}
 .report .fn .name{width:150px;color:#39424f;}
 .report .fn .track{position:relative;flex:1;height:16px;background:#f0f3f7;border-radius:8px;}
@@ -327,9 +330,11 @@ function convCells(D,s,upKey,downKey){
     if(rs.length) w4Base=rs.reduce((a,b)=>a+b,0)/rs.length;
   } else { w4Base=rate(d.mean,u.mean); }
   // WoW / Wo4W as relative % change (same unit as the KPI tiles), not pp.
-  return {now, wow:(now!=null&&wowBase)?(now-wowBase)/wowBase:null,
+  return {now, base:w4Base,
+               wow:(now!=null&&wowBase)?(now-wowBase)/wowBase:null,
                wo4w:(now!=null&&w4Base)?(now-w4Base)/w4Base:null};
 }
+function convRate(dv,uv){ return (uv==null||uv===0||dv==null)?null:dv/uv; }
 function convConnector(D,s,upKey,downKey){
   const c=convCells(D,s,upKey,downKey);
   const rateTxt=(c&&c.now!=null)?(c.now*100).toFixed(1)+"%":"n/a";
@@ -372,12 +377,26 @@ function detailHtml(s,D){
   const avgHdr=daily?"Past-4wk avg (Wo4W)":"Prior-4wk avg (Wo4W)";
   const head="<tr><th>Metric</th>"+cols.map((c,i)=>`<th class="${daily&&i==anIdx?'an':''}">${c}${daily&&i==anIdx?'<br><span style="font-weight:400">analysis</span>':''}</th>`).join("")+`<th>${avgHdr}</th><th>WoW Δ%</th><th>Wo4W Δ%</th></tr>`;
   const dcell=x=>`<td><span class="chg ${cl(x)}">${pctTxt(x)}</span></td>`;
-  const rows=D.metric_order.map(m=>{
+  const metricRow=m=>{
     const n=s[m];
     if(!n) return `<tr><td>${D.metric_labels[m]}</td>`+cols.map(()=>'<td class="flat">—</td>').join("")+'<td class="flat">—</td><td class="flat">n/a</td><td class="flat">n/a</td></tr>';
     const cells=n.vals.map((v,i)=>`<td class="${daily&&i==anIdx?'an':''}">${fmt(v)}</td>`).join("");
     return `<tr><td>${D.metric_labels[m]}</td>${cells}<td>${fmt(n.mean)}</td>${dcell(n.wow)}${dcell(n.wo4w)}</tr>`;
-  }).join("");
+  };
+  // Derived conversion-rate row (New Subs / Install) shown per date between the two.
+  const convRow=()=>{
+    const u=s["app_total_install"], d=s["app_total_new_subs"];
+    if(!u||!d||!u.vals||!d.vals) return "";
+    const cells=u.vals.map((_,i)=>{
+      const r=convRate(d.vals[i],u.vals[i]);
+      return `<td class="${daily&&i==anIdx?'an':''}">${r==null?'<span class="flat">n/a</span>':(r*100).toFixed(1)+'%'}</td>`;
+    }).join("");
+    const c=convCells(D,s,"app_total_install","app_total_new_subs");
+    const avg=(c&&c.base!=null)?(c.base*100).toFixed(1)+'%':'<span class="flat">n/a</span>';
+    return `<tr class="convrow"><td>Install → New Subs conversion</td>${cells}<td>${avg}</td>${dcell(c?c.wow:null)}${dcell(c?c.wo4w:null)}</tr>`;
+  };
+  let rows="";
+  D.metric_order.forEach(m=>{ rows+=metricRow(m); if(m==="app_total_install") rows+=convRow(); });
   const h2=daily?"Analysis day vs WoW (last week) & Wo4W (past-4-week avg)":"This week vs WoW (prior week) & Wo4W (prior-4-week avg)";
   return card(h2+" · "+appName(D,S.app)+" · "+ctyName(D,S.cty),`<table><thead>${head}</thead><tbody>${rows}</tbody></table>`);
 }
