@@ -78,6 +78,13 @@ body{background:var(--bg);color:var(--ink);font:14px/1.5 -apple-system,BlinkMacS
 .report .deltas{display:flex;gap:16px;}
 .report .d{display:flex;flex-direction:column;gap:1px;}
 .report .dl{font-size:9.5px;font-weight:700;color:#9aa3ad;letter-spacing:.05em;}
+/* funnel conversion connector between two KPI tiles */
+.report .conv{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-width:104px;padding:10px 6px;}
+.report .conv .carrow{color:#c4ccd6;font-size:16px;line-height:1;margin-bottom:1px;}
+.report .conv .ck{font-size:9.5px;color:#6b7480;font-weight:700;text-transform:uppercase;letter-spacing:.03em;text-align:center;line-height:1.2;}
+.report .conv .cv{font-size:21px;font-weight:700;color:#2563eb;margin:1px 0 2px;}
+.report .conv .deltas{gap:10px;}
+.report .conv .dl{text-align:center;}
 .report .card{background:#fff;border:1px solid #e7ebf0;border-radius:12px;padding:18px 20px;margin:14px 0;box-shadow:0 1px 2px rgba(20,30,50,.05);}
 .report .card h2{font-size:14px;margin:0 0 12px;text-transform:uppercase;letter-spacing:.04em;color:#39424f;}
 .report .ins{display:flex;gap:10px;align-items:flex-start;margin:12px 0;font-size:13px;line-height:1.45;}
@@ -303,11 +310,47 @@ function execHtml(list){
   }).join("");
   return card("Executive Summary",rows);
 }
+/* Funnel conversion rate = down / up (e.g. New Subs / Install), with WoW & Wo4W
+   as percentage-point deltas. Computed from the cube's per-date values so it tracks
+   the switcher. A 0/missing denominator (an omitted row) yields n/a, not a bogus rate. */
+function convCells(D,s,upKey,downKey){
+  const u=s[upKey], d=s[downKey];
+  if(!u||!d||!u.vals||!d.vals) return null;
+  const ai=u.vals.length-1;
+  const rate=(dv,uv)=>(uv==null||uv===0||dv==null)?null:(dv/uv);
+  const now=rate(last(d.vals),last(u.vals));
+  const wi=(D.mode=="daily")?ai-1:0;                 // one period before (WoW baseline)
+  const wowBase=(wi>=0)?rate(d.vals[wi],u.vals[wi]):null;
+  let w4Base=null;
+  if(D.mode=="daily"){                                // mean of the baseline weeks' ratios
+    const rs=[]; for(let k=0;k<ai;k++){const r=rate(d.vals[k],u.vals[k]); if(r!=null) rs.push(r);}
+    if(rs.length) w4Base=rs.reduce((a,b)=>a+b,0)/rs.length;
+  } else { w4Base=rate(d.mean,u.mean); }
+  return {now, wow:(now!=null&&wowBase!=null)?now-wowBase:null,
+               wo4w:(now!=null&&w4Base!=null)?now-w4Base:null};
+}
+function ppChip(label,x){
+  if(x==null) return `<span class="d"><span class="dl">${label}</span><span class="chg flat">n/a</span></span>`;
+  const arr=x>0?"▲":(x<0?"▼":"■"), c=x>0?"up":(x<0?"down":"flat");
+  return `<span class="d"><span class="dl">${label}</span><span class="chg ${c}">${arr} ${(x>=0?"+":"")+(x*100).toFixed(1)}pp</span></span>`;
+}
+function convConnector(D,s,upKey,downKey){
+  const c=convCells(D,s,upKey,downKey);
+  const rateTxt=(c&&c.now!=null)?(c.now*100).toFixed(1)+"%":"n/a";
+  const shrt=k=>D.metric_labels[k].replace("App Total ","");
+  return `<div class="conv"><div class="carrow">▸</div><div class="ck">${shrt(upKey)} → ${shrt(downKey)}<br>conversion</div><div class="cv">${rateTxt}</div><div class="deltas">${ppChip("WoW",c?c.wow:null)}${ppChip("Wo4W",c?c.wo4w:null)}</div></div>`;
+}
+/* Insert a conversion connector after these upstream tiles (up → next count layer). */
+const CONV_AFTER={app_total_new_user:"app_total_install", app_total_install:"app_total_new_subs"};
 function kpiHtml(s,D){
-  return '<div class="grid">'+D.metric_order.map(m=>{
+  const parts=[];
+  D.metric_order.forEach(m=>{
     const n=s[m], v=n?last(n.vals):null;
-    return `<div class="tile"><div class="k">${D.metric_labels[m]}</div><div class="v">${fmt(v)}</div><div class="deltas">${deltaChip("WoW",n?n.wow:null)}${deltaChip("Wo4W",n?n.wo4w:null)}</div></div>`;
-  }).join("")+'</div>';
+    parts.push(`<div class="tile"><div class="k">${D.metric_labels[m]}</div><div class="v">${fmt(v)}</div><div class="deltas">${deltaChip("WoW",n?n.wow:null)}${deltaChip("Wo4W",n?n.wo4w:null)}</div></div>`);
+    const dn=CONV_AFTER[m];
+    if(dn && D.metric_order.includes(dn)) parts.push(convConnector(D,s,m,dn));
+  });
+  return '<div class="grid">'+parts.join("")+'</div>';
 }
 function funnelHtml(s,D){
   const lagged=new Set(D.lagged||[]);
