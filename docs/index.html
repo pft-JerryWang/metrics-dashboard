@@ -280,6 +280,7 @@ function deltaChip(label,x){
    slate = neutral/informational. Keyed off each insight's `tone` from the backend. */
 const TONE={good:{dot:"#059669",head:"#047857"},warn:{dot:"#e67e22",head:"#b45309"},
             alert:{dot:"#dc2626",head:"#b91c1c"},info:{dot:"#64748b",head:"#334155"}};
+const TONE_RANK={alert:0,warn:1,good:2,info:3};
 function toneOf(o){ return TONE[o.tone]||TONE.info; }
 /* Per-slice executive summary: prefer DATA.insights[app][cty], fall back to the
    app's All-country set, then to the legacy global MD bullets. */
@@ -294,7 +295,8 @@ function insList(D,block){
   });
 }
 function execHtml(list){
-  const rows=(list||[]).map(o=>{
+  list=(list||[]).slice().sort((a,b)=>(TONE_RANK[a.tone]??3)-(TONE_RANK[b.tone]??3));
+  const rows=list.map(o=>{
     const c=toneOf(o);
     const head=o.head?`<span class="head" style="color:${c.head}">${o.head}</span>`:"";
     return `<div class="ins"><span class="dot" style="background:${c.dot}"></span><span><b>${o.kick}</b>${head}<span class="detail">${o.body}</span></span></div>`;
@@ -355,7 +357,10 @@ function byCountryHtml(D){
   return card("By Country",'<p class="sub" style="margin:0">No by-country views provided yet — fill the country rows in <code>metric_views_full.csv</code> to enable this section.</p>');
 }
 function dataGapsHtml(s,D){
-  const gaps=D.metric_order.filter(m=>!s[m]).map(m=>D.metric_labels[m]);
+  // A metric with no node, or an analysis-day value of 0 (an omitted Tableau row),
+  // is a data gap — surfaced here rather than as a -100% move in the summary.
+  const gaps=D.metric_order.filter(m=>{const n=s[m]; if(!n) return true; const v=last(n.vals); return v==null||v===0;})
+    .map(m=>D.metric_labels[m]+((s[m]&&last(s[m].vals)===0)?" (value 0 — omitted/missing row)":""));
   return card("Data gaps disclosed", gaps.length?('<ul class="gaps">'+gaps.map(g=>`<li>${g}</li>`).join("")+'</ul>'):'<p>None.</p>');
 }
 function renderReport(block,srcDate){
