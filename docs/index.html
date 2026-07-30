@@ -235,7 +235,7 @@ function renderLive(block){
   const chartB = S.mode==="weekly"
     ? `<div class="panel"><h2>Revenue mix by app (this week)</h2><div class="chartbox"><canvas id="cB"></canvas></div></div>`
     : `<div class="panel"><h2>${appName(D,S.app)} daily trend (New Subs / Revenue)</h2><div class="chartbox"><canvas id="cB"></canvas></div></div>`;
-  const ins='<div class="insights">'+(block.insights||[]).map(o=>`<div class="insL"><div class="t">${o.title}</div><div class="b">${o.body}</div></div>`).join("")+'</div>';
+  const ins='<div class="insights">'+insList(D,block).map(o=>`<div class="insL" style="border-left-color:${toneOf(o).dot}"><div class="t">${o.head||o.kick}</div><div class="b">${o.body}</div></div>`).join("")+'</div>';
   document.getElementById("body").innerHTML=
     kpis+'<div class="grid2"><div class="panel"><h2>WoW change by app (per metric)</h2><div class="chartbox"><canvas id="cA"></canvas></div></div>'+chartB+'</div>'+
     '<div class="panel" style="margin-bottom:16px"><h2>By app (value + WoW)</h2>'+table+'</div>'+ins;
@@ -276,16 +276,28 @@ function deltaChip(label,x){
   const arr=x>0?"▲":(x<0?"▼":"■");
   return `<span class="d"><span class="dl">${label}</span><span class="chg ${cl(x)}">${arr} ${pctTxt(x)}</span></span>`;
 }
-function insColor(title){
-  if(/^Forecast/i.test(title)) return {dot:"#3367d6",head:"#1a2330"};
-  if(/lead.?lag/i.test(title)) return {dot:"#2d7d46",head:"#2d7d46"};
-  return {dot:"#e67e22",head:"#e67e22"};
+/* Signal colours (item 4): green = positive, orange = caution, red = warning,
+   slate = neutral/informational. Keyed off each insight's `tone` from the backend. */
+const TONE={good:{dot:"#059669",head:"#047857"},warn:{dot:"#e67e22",head:"#b45309"},
+            alert:{dot:"#dc2626",head:"#b91c1c"},info:{dot:"#64748b",head:"#334155"}};
+function toneOf(o){ return TONE[o.tone]||TONE.info; }
+/* Per-slice executive summary: prefer DATA.insights[app][cty], fall back to the
+   app's All-country set, then to the legacy global MD bullets. */
+function insList(D,block){
+  const bag=(D.insights||{})[S.app];
+  if(bag&&bag[S.cty]) return bag[S.cty];
+  if(bag&&bag.all) return bag.all;
+  return (block.insights||[]).map(o=>{
+    const i=(o.title||"").indexOf(" — ");
+    return {kick:i>=0?o.title.slice(0,i):(o.title||""),
+            head:i>=0?o.title.slice(i+3):"", body:o.body, tone:"info"};
+  });
 }
-function execHtml(insights){
-  const rows=(insights||[]).map(o=>{
-    const c=insColor(o.title), i=o.title.indexOf(" — ");
-    const kick=i>=0?o.title.slice(0,i):"", head=i>=0?o.title.slice(i+3):o.title;
-    return `<div class="ins"><span class="dot" style="background:${c.dot}"></span><span><b>${kick}</b><span class="head" style="color:${c.head}">${head}</span><span class="detail">${o.body}</span></span></div>`;
+function execHtml(list){
+  const rows=(list||[]).map(o=>{
+    const c=toneOf(o);
+    const head=o.head?`<span class="head" style="color:${c.head}">${o.head}</span>`:"";
+    return `<div class="ins"><span class="dot" style="background:${c.dot}"></span><span><b>${o.kick}</b>${head}<span class="detail">${o.body}</span></span></div>`;
   }).join("");
   return card("Executive Summary",rows);
 }
@@ -356,7 +368,7 @@ function renderReport(block,srcDate){
     </div><div style="flex:1"></div><button class="btn" onclick="window.print()">⬇ Download PDF</button></div>`;
   const meta='<div class="cmp" style="margin-top:0">Period: '+period+' · Country: '+ctyName(D,S.cty)+(D.mode=="weekly"&&srcDate!==S.date?(' · weekly source '+srcDate):'')+'</div>';
   document.getElementById("body").innerHTML=head+meta+'<div class="report">'+
-    kpiHtml(s,D)+execHtml(block.insights)+funnelHtml(s,D)+detailHtml(s,D)+byAppHtml(D)+byCountryHtml(D)+dataGapsHtml(s,D)+'</div>';
+    kpiHtml(s,D)+execHtml(insList(D,block))+funnelHtml(s,D)+detailHtml(s,D)+byAppHtml(D)+byCountryHtml(D)+dataGapsHtml(s,D)+'</div>';
 }
 
 /* ---------- events ---------- */
