@@ -70,20 +70,20 @@ body{background:var(--bg);color:var(--ink);font:14px/1.5 -apple-system,BlinkMacS
 .btn{appearance:none;border:1px solid var(--blue);color:var(--blue);background:#fff;border-radius:9px;padding:8px 14px;font:inherit;font-weight:600;font-size:13px;cursor:pointer}
 /* ===== ported original report styling (scoped) ===== */
 .report .grid{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:6px;}
-.report .tile{flex:1;min-width:160px;background:#fff;border:1px solid #e7ebf0;border-radius:12px;padding:16px 18px;box-shadow:0 1px 2px rgba(20,30,50,.05);}
+.report .tile{flex:1;min-width:192px;background:#fff;border:1px solid #e7ebf0;border-radius:12px;padding:16px 18px;box-shadow:0 1px 2px rgba(20,30,50,.05);}
 .report .tile .k{font-size:12px;color:#6b7480;font-weight:600;}
 .report .tile .v{font-size:26px;font-weight:700;margin:4px 0 6px;}
 .report .chg{font-size:12.5px;font-weight:700;}
 .report .up{color:#2d7d46;} .report .down{color:#c0392b;} .report .flat{color:#6b7480;}
-.report .deltas{display:flex;gap:16px;}
+.report .deltas{display:flex;gap:12px;}
 .report .d{display:flex;flex-direction:column;gap:1px;}
 .report .dl{font-size:9.5px;font-weight:700;color:#9aa3ad;letter-spacing:.05em;}
 /* funnel conversion connector between two KPI tiles */
-.report .conv{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-width:104px;padding:10px 6px;}
+.report .conv{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-width:128px;padding:10px 6px;}
 .report .conv .carrow{color:#c4ccd6;font-size:16px;line-height:1;margin-bottom:1px;}
 .report .conv .ck{font-size:9.5px;color:#6b7480;font-weight:700;text-transform:uppercase;letter-spacing:.03em;text-align:center;line-height:1.2;}
 .report .conv .cv{font-size:21px;font-weight:700;color:#2563eb;margin:1px 0 2px;}
-.report .conv .deltas{gap:10px;}
+.report .conv .deltas{gap:8px;}
 .report .conv .dl{text-align:center;}
 .report .card{background:#fff;border:1px solid #e7ebf0;border-radius:12px;padding:18px 20px;margin:14px 0;box-shadow:0 1px 2px rgba(20,30,50,.05);}
 .report .card h2{font-size:14px;margin:0 0 12px;text-transform:uppercase;letter-spacing:.04em;color:#39424f;}
@@ -195,7 +195,7 @@ function syncControls(D,dailyAvail,weeklyAvail){
   document.getElementById("ctyPill").innerHTML=D.countries.map(c=>`<button data-c="${c[0]}" class="${c[0]===S.cty?'on':''}">${c[1]}</button>`).join("");
   document.getElementById("cmp").textContent=(S.mode==="weekly"
      ? "Comparison: this week vs last week (WoW) + vs prior-4-week avg (Wo4W)"
-     : "Comparison: analysis day vs same weekday last week (WoW) + past-4-week avg (Wo4W)");
+     : "Comparison: analysis day vs previous day (DoD) + same weekday last week (WoW) + past-4-week avg (Wo4W)");
 }
 
 /* ---------- dispatch ---------- */
@@ -324,13 +324,17 @@ function convCells(D,s,upKey,downKey){
   const now=rate(last(d.vals),last(u.vals));
   const wi=(D.mode=="daily")?ai-1:0;                 // one period before (WoW baseline)
   const wowBase=(wi>=0)?rate(d.vals[wi],u.vals[wi]):null;
+  // DoD (daily only): conversion on the previous calendar day, from each metric's
+  // prev-day value (pv), computed server-side since vals[] are same-weekday baselines.
+  const dodBase=(D.mode=="daily")?rate(d.pv,u.pv):null;
   let w4Base=null;
   if(D.mode=="daily"){                                // mean of the baseline weeks' ratios
     const rs=[]; for(let k=0;k<ai;k++){const r=rate(d.vals[k],u.vals[k]); if(r!=null) rs.push(r);}
     if(rs.length) w4Base=rs.reduce((a,b)=>a+b,0)/rs.length;
   } else { w4Base=rate(d.mean,u.mean); }
-  // WoW / Wo4W as relative % change (same unit as the KPI tiles), not pp.
+  // DoD / WoW / Wo4W as relative % change (same unit as the KPI tiles), not pp.
   return {now, base:w4Base,
+               dod:(now!=null&&dodBase)?(now-dodBase)/dodBase:null,
                wow:(now!=null&&wowBase)?(now-wowBase)/wowBase:null,
                wo4w:(now!=null&&w4Base)?(now-w4Base)/w4Base:null};
 }
@@ -339,7 +343,8 @@ function convConnector(D,s,upKey,downKey){
   const c=convCells(D,s,upKey,downKey);
   const rateTxt=(c&&c.now!=null)?(c.now*100).toFixed(1)+"%":"n/a";
   const shrt=k=>D.metric_labels[k].replace("App Total ","");
-  return `<div class="conv"><div class="carrow">▸</div><div class="ck">${shrt(upKey)} → ${shrt(downKey)}<br>conversion</div><div class="cv">${rateTxt}</div><div class="deltas">${deltaChip("WoW",c?c.wow:null)}${deltaChip("Wo4W",c?c.wo4w:null)}</div></div>`;
+  const dodChip=(D.mode=="daily")?deltaChip("DoD",c?c.dod:null):"";
+  return `<div class="conv"><div class="carrow">▸</div><div class="ck">${shrt(upKey)} → ${shrt(downKey)}<br>conversion</div><div class="cv">${rateTxt}</div><div class="deltas">${dodChip}${deltaChip("WoW",c?c.wow:null)}${deltaChip("Wo4W",c?c.wo4w:null)}</div></div>`;
 }
 /* Insert a conversion connector after these upstream tiles (up → next count layer). */
 const CONV_AFTER={app_total_install:"app_total_new_subs"};
@@ -347,7 +352,8 @@ function kpiHtml(s,D){
   const parts=[];
   D.metric_order.forEach(m=>{
     const n=s[m], v=n?last(n.vals):null;
-    parts.push(`<div class="tile"><div class="k">${D.metric_labels[m]}</div><div class="v">${fmt(v)}</div><div class="deltas">${deltaChip("WoW",n?n.wow:null)}${deltaChip("Wo4W",n?n.wo4w:null)}</div></div>`);
+    const dodChip=(D.mode=="daily")?deltaChip("DoD",n?n.dod:null):"";
+    parts.push(`<div class="tile"><div class="k">${D.metric_labels[m]}</div><div class="v">${fmt(v)}</div><div class="deltas">${dodChip}${deltaChip("WoW",n?n.wow:null)}${deltaChip("Wo4W",n?n.wo4w:null)}</div></div>`);
     const dn=CONV_AFTER[m];
     if(dn && D.metric_order.includes(dn)) parts.push(convConnector(D,s,m,dn));
   });
