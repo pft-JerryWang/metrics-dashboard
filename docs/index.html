@@ -147,6 +147,7 @@ body{background:var(--bg);color:var(--ink);font:14px/1.5 -apple-system,BlinkMacS
         <div class="row2">
           <div class="ctl"><span class="cl">App</span><div class="pill" id="appPill"></div></div>
           <div class="ctl"><span class="cl">Country</span><div class="pill" id="ctyPill"></div></div>
+          <div class="ctl" id="osCtl" style="display:none"><span class="cl">OS</span><div class="pill" id="osPill"></div></div>
         </div>
         <div class="cmp" id="cmp"></div>
       </div>
@@ -160,7 +161,7 @@ body{background:var(--bg);color:var(--ink);font:14px/1.5 -apple-system,BlinkMacS
 const APPCOL={all_app:"#2563eb",ymk:"#db2777",ycp:"#059669"};
 const nf=new Intl.NumberFormat("en-US");
 let INDEX=null, CACHE={}, charts=[];
-const S={page:"live",date:null,mode:"daily",app:"all_app",cty:"all"};
+const S={page:"live",date:null,mode:"daily",app:"all_app",cty:"all",os:"all_os"};
 try{ S.page=localStorage.getItem("pf_page")||"live"; }catch(e){}
 
 /* shared helpers */
@@ -174,6 +175,17 @@ function median(a){const s=a.filter(v=>v!=null).slice().sort((p,q)=>p-q);if(!s.l
 function destroyCharts(){ charts.forEach(c=>{try{c.destroy()}catch(e){}}); charts=[]; }
 function appName(D,key){ const a=D.apps.find(x=>x[0]===key); return a?a[1]:key; }
 function ctyName(D,key){ const c=D.countries.find(x=>x[0]===key); return c?c[1]:key; }
+/* OS axis (added 2026-08). Reports built before the OS split have a 2-level
+   cube[app][cty] and no D.oses; newer reports are 3-level cube[app][cty][os] with
+   an `all_os` aggregate. hasOS()/sliceOf() keep the page working for both. */
+function hasOS(D){ return Array.isArray(D.oses) && D.oses.length>0; }
+function osName(D,key){ const o=(D.oses||[]).find(x=>x[0]===key); return o?o[1]:key; }
+function sliceOf(D,app,cty){
+  const c=((D.cube||{})[app]||{})[cty];
+  if(!c) return null;
+  if(!hasOS(D)) return c;                        // legacy 2-level cube
+  return c[S.os] || c.all_os || null;           // descend into the OS layer
+}
 function weekRange(D){ const t=(D.date_cols||[]).find(c=>/^This/.test(c)); return t? t.replace(/^This\s*/,"").replace(/(\d\d-\d\d)-(\d\d-\d\d)/,"$1 – $2") : ""; }
 
 async function getReport(date){
@@ -193,6 +205,13 @@ function syncControls(D,dailyAvail,weeklyAvail){
   });
   document.getElementById("appPill").innerHTML=D.apps.map(a=>`<button data-a="${a[0]}" class="${a[0]===S.app?'on':''}">${a[1]}</button>`).join("");
   document.getElementById("ctyPill").innerHTML=D.countries.map(c=>`<button data-c="${c[0]}" class="${c[0]===S.cty?'on':''}">${c[1]}</button>`).join("");
+  const osCtl=document.getElementById("osCtl");
+  if(hasOS(D)){
+    osCtl.style.display="";
+    const avail=o=>!!(((D.cube[S.app]||{})[S.cty]||{})[o]);
+    document.getElementById("osPill").innerHTML=D.oses.map(o=>
+      `<button data-o="${o[0]}" class="${o[0]===S.os?'on':''}" ${avail(o[0])?'':'disabled style="opacity:.4;cursor:not-allowed"'}>${o[1]}</button>`).join("");
+  } else { osCtl.style.display="none"; }
   document.getElementById("cmp").textContent=(S.mode==="weekly"
      ? "Comparison: this week vs last week (WoW) + vs prior-4-week avg (Wo4W)"
      : "Comparison: analysis day vs previous day (DoD) + same weekday last week (WoW) + past-4-week avg (Wo4W)");
@@ -220,6 +239,9 @@ async function refresh(){
   const D=block.data;
   if(!D.apps.some(a=>a[0]===S.app)) S.app="all_app";
   if(!D.countries.some(c=>c[0]===S.cty)) S.cty=D.countries[0][0];
+  // Keep the OS selection valid for the current app/country (fall back to all_os).
+  if(!hasOS(D)) S.os="all_os";
+  else if(!(((D.cube[S.app]||{})[S.cty]||{})[S.os])) S.os="all_os";
   syncControls(D,dailyAvail,weeklyAvail);
   destroyCharts();
   if(S.page==="live") renderLive(block,srcDate); else renderReport(block,srcDate);
@@ -229,16 +251,16 @@ async function refresh(){
 
 /* ---------- Live Dashboard ---------- */
 function renderLive(block){
-  const D=block.data, cube=D.cube, order=D.metric_order, lab=D.metric_labels, apps=D.apps;
-  const sel=cube[S.app][S.cty];
+  const D=block.data, order=D.metric_order, lab=D.metric_labels, apps=D.apps;
+  const sel=sliceOf(D,S.app,S.cty)||{};
   const kpis='<div class="kpis">'+order.map(m=>{
-    const c=sel[m], v=last(c.vals), dd=c.wow;
-    return `<div class="kpi"><div class="lab">${lab[m]}</div><div class="val">${(m==="app_total_revenue"?"$":"")+nf.format(Math.round(v))}</div><div class="delta ${cls(dd)}">${pct(dd)} <span style="color:var(--muted);font-weight:600">WoW</span></div></div>`;
+    const c=sel[m], v=c?last(c.vals):null, dd=c?c.wow:null;
+    return `<div class="kpi"><div class="lab">${lab[m]}</div><div class="val">${(m==="app_total_revenue"?"$":"")+fmt(v)}</div><div class="delta ${cl(dd)}">${pctTxt(dd)} <span style="color:var(--muted);font-weight:600">WoW</span></div></div>`;
   }).join("")+'</div>';
   let thead="<tr><th>Metric</th>"+apps.map(a=>`<th>${a[1]}</th>`).join("")+"</tr>";
   let rows=order.map(m=>{
-    let tds=apps.map(a=>{ const c=cube[a[0]][S.cty][m], v=last(c.vals);
-      return `<td>${(m==="app_total_revenue"?"$":"")+nf.format(Math.round(v))}<span class="d ${cls(c.wow)}">${pct(c.wow)}</span></td>`; }).join("");
+    let tds=apps.map(a=>{ const c=(sliceOf(D,a[0],S.cty)||{})[m], v=c?last(c.vals):null;
+      return `<td>${(m==="app_total_revenue"?"$":"")+fmt(v)}<span class="d ${cl(c?c.wow:null)}">${pctTxt(c?c.wow:null)}</span></td>`; }).join("");
     return `<tr><td>${lab[m]}</td>${tds}</tr>`;
   }).join("");
   const table=`<table><thead>${thead}</thead><tbody>${rows}</tbody></table>`;
@@ -249,27 +271,29 @@ function renderLive(block){
   document.getElementById("body").innerHTML=
     kpis+'<div class="grid2"><div class="panel"><h2>WoW change by app (per metric)</h2><div class="chartbox"><canvas id="cA"></canvas></div></div>'+chartB+'</div>'+
     '<div class="panel" style="margin-bottom:16px"><h2>By app (value + WoW)</h2>'+table+'</div>'+ins;
-  drawWoW(cube,order,lab,apps);
-  if(S.mode==="weekly") drawShare(cube); else drawTrend(D);
+  drawWoW(D,order,lab,apps);
+  if(S.mode==="weekly") drawShare(D); else drawTrend(D);
 }
-function drawWoW(cube,order,lab,apps){
+function drawWoW(D,order,lab,apps){
   charts.push(new Chart(document.getElementById("cA"),{type:"bar",
     data:{labels:order.map(m=>lab[m].replace("App Total ","")),
       datasets:apps.map(a=>({label:a[1],backgroundColor:APPCOL[a[0]]||"#888",borderRadius:4,
-        data:order.map(m=>+(cube[a[0]][S.cty][m].wow*100).toFixed(2))}))},
+        data:order.map(m=>{const c=(sliceOf(D,a[0],S.cty)||{})[m];return c&&c.wow!=null?+(c.wow*100).toFixed(2):null;})}))},
     options:{responsive:true,maintainAspectRatio:false,
       plugins:{legend:{position:"bottom",labels:{boxWidth:12}},tooltip:{callbacks:{label:c=>c.dataset.label+": "+(c.parsed.y>=0?"+":"")+c.parsed.y+"%"}}},
       scales:{y:{ticks:{callback:v=>v+"%"},grid:{color:"#eef0f3"}},x:{grid:{display:false}}}}}));
 }
-function drawShare(cube){
-  const ymk=last(cube.ymk[S.cty].app_total_revenue.vals), ycp=last(cube.ycp[S.cty].app_total_revenue.vals);
+function drawShare(D){
+  const ymkS=sliceOf(D,"ymk",S.cty)||{}, ycpS=sliceOf(D,"ycp",S.cty)||{};
+  const ymk=ymkS.app_total_revenue?last(ymkS.app_total_revenue.vals):0, ycp=ycpS.app_total_revenue?last(ycpS.app_total_revenue.vals):0;
   charts.push(new Chart(document.getElementById("cB"),{type:"doughnut",
     data:{labels:["YMK","YCP"],datasets:[{data:[ymk,ycp],backgroundColor:[APPCOL.ymk,APPCOL.ycp],borderWidth:0}]},
     options:{responsive:true,maintainAspectRatio:false,cutout:"58%",
       plugins:{legend:{position:"bottom",labels:{boxWidth:12}},tooltip:{callbacks:{label:c=>{const t=ymk+ycp;return c.label+": $"+nf.format(Math.round(c.parsed))+" ("+(c.parsed/t*100).toFixed(1)+"%)";}}}}}}));
 }
 function drawTrend(D){
-  const a=D.cube[S.app][S.cty];
+  const a=sliceOf(D,S.app,S.cty)||{};
+  if(!a.app_total_new_subs||!a.app_total_revenue) return;
   charts.push(new Chart(document.getElementById("cB"),{
     data:{labels:D.date_cols,datasets:[
       {type:"bar",label:"New Subs",backgroundColor:"#93c5fd",borderRadius:4,yAxisID:"y",data:a.app_total_new_subs.vals},
@@ -295,9 +319,11 @@ function toneOf(o){ return TONE[o.tone]||TONE.info; }
 /* Per-slice executive summary: prefer DATA.insights[app][cty], fall back to the
    app's All-country set, then to the legacy global MD bullets. */
 function insList(D,block){
+  // insights are keyed [app][cty] (legacy) or [app][cty][os] (OS-aware). pick(x)
+  // returns the list, descending into the OS layer when present.
+  const pick=x=>!x?null:(hasOS(D)?(x[S.os]||x.all_os||null):x);
   const bag=(D.insights||{})[S.app];
-  if(bag&&bag[S.cty]) return bag[S.cty];
-  if(bag&&bag.all) return bag.all;
+  if(bag){ const v=pick(bag[S.cty]); if(v) return v; const va=pick(bag.all); if(va) return va; }
   return (block.insights||[]).map(o=>{
     const i=(o.title||"").indexOf(" — ");
     return {kick:i>=0?o.title.slice(0,i):(o.title||""),
@@ -408,14 +434,15 @@ function detailHtml(s,D){
 }
 function byAppHtml(D){
   const cty="all", clbl=ctyName(D,"all");
+  const osNote=hasOS(D)?" · OS = "+osName(D,S.os):"";
   let thead="<tr><th>Metric</th>"+D.apps.map(a=>`<th>${a[1]}</th>`).join("")+"</tr>";
   let rows=D.metric_order.map(m=>{
-    let tds=D.apps.map(a=>{ const n=(D.cube[a[0]]||{})[cty]?D.cube[a[0]][cty][m]:null;
+    let tds=D.apps.map(a=>{ const n=(sliceOf(D,a[0],cty)||{})[m];
       if(!n) return '<td class="flat">n/a</td>';
       return `<td>${fmt(last(n.vals))}<br><span class="chg ${cl(n.p)}">${pctTxt(n.p)}</span></td>`; }).join("");
     return `<tr><td>${D.metric_labels[m]}</td>${tds}</tr>`;
   }).join("");
-  return card("Total — by app (country = "+clbl+")",`<table><thead>${thead}</thead><tbody>${rows}</tbody></table>`);
+  return card("Total — by app (country = "+clbl+osNote+")",`<table><thead>${thead}</thead><tbody>${rows}</tbody></table>`);
 }
 function byCountryHtml(D){
   return card("By Country",'<p class="sub" style="margin:0">No by-country views provided yet — fill the country rows in <code>metric_views_full.csv</code> to enable this section.</p>');
@@ -428,14 +455,14 @@ function dataGapsHtml(s,D){
   return card("Data gaps disclosed", gaps.length?('<ul class="gaps">'+gaps.map(g=>`<li>${g}</li>`).join("")+'</ul>'):'<p>None.</p>');
 }
 function renderReport(block,srcDate){
-  const D=block.data, s=D.cube[S.app][S.cty];
+  const D=block.data, s=sliceOf(D,S.app,S.cty)||{};
   const modeWord=D.mode=="weekly"?"Weekly":"Daily";
   const period=D.mode=="weekly"?weekRange(D):(last(D.date_cols)+" (analysis day, T-2)");
   const head=`<div class="rephead"><div>
       <div class="kick">Trending Report</div>
       <div class="h">${modeWord} report for <b>${appName(D,S.app)}</b> <span style="color:var(--muted)">(${srcDate})</span></div>
     </div><div style="flex:1"></div><button class="btn" onclick="window.print()">⬇ Download PDF</button></div>`;
-  const meta='<div class="cmp" style="margin-top:0">Period: '+period+' · Country: '+ctyName(D,S.cty)+(D.mode=="weekly"&&srcDate!==S.date?(' · weekly source '+srcDate):'')+'</div>';
+  const meta='<div class="cmp" style="margin-top:0">Period: '+period+' · Country: '+ctyName(D,S.cty)+(hasOS(D)?' · OS: '+osName(D,S.os):'')+(D.mode=="weekly"&&srcDate!==S.date?(' · weekly source '+srcDate):'')+'</div>';
   document.getElementById("body").innerHTML=head+meta+'<div class="report">'+
     kpiHtml(s,D)+execHtml(insList(D,block))+funnelHtml(s,D)+detailHtml(s,D)+byAppHtml(D)+byCountryHtml(D)+dataGapsHtml(s,D)+'</div>';
 }
@@ -445,6 +472,7 @@ document.getElementById("nav").addEventListener("click",e=>{const a=e.target.clo
 document.getElementById("modeSeg").addEventListener("click",e=>{const b=e.target.closest("button");if(!b||b.disabled)return;S.mode=b.dataset.m;refresh();});
 document.getElementById("appPill").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;S.app=b.dataset.a;refresh();});
 document.getElementById("ctyPill").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;S.cty=b.dataset.c;refresh();});
+document.getElementById("osPill").addEventListener("click",e=>{const b=e.target.closest("button");if(!b||b.disabled)return;S.os=b.dataset.o;refresh();});
 document.getElementById("dp").addEventListener("change",e=>{if(e.target.value){S.date=e.target.value;refresh();}});
 
 (async()=>{
