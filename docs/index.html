@@ -161,7 +161,7 @@ body{background:var(--bg);color:var(--ink);font:14px/1.5 -apple-system,BlinkMacS
 const APPCOL={all_app:"#2563eb",ymk:"#db2777",ycp:"#059669"};
 const nf=new Intl.NumberFormat("en-US");
 let INDEX=null, CACHE={}, charts=[];
-const S={page:"live",date:null,mode:"daily",app:"all_app",cty:"all",os:"all_os"};
+const S={page:"live",date:null,mode:"daily",app:"all_app",cty:"all",os:"ios"};
 try{ S.page=localStorage.getItem("pf_page")||"live"; }catch(e){}
 
 /* shared helpers */
@@ -176,15 +176,19 @@ function destroyCharts(){ charts.forEach(c=>{try{c.destroy()}catch(e){}}); chart
 function appName(D,key){ const a=D.apps.find(x=>x[0]===key); return a?a[1]:key; }
 function ctyName(D,key){ const c=D.countries.find(x=>x[0]===key); return c?c[1]:key; }
 /* OS axis (added 2026-08). Reports built before the OS split have a 2-level
-   cube[app][cty] and no D.oses; newer reports are 3-level cube[app][cty][os] with
-   an `all_os` aggregate. hasOS()/sliceOf() keep the page working for both. */
+   cube[app][cty] and no D.oses. The all_os aggregate was later removed (Android
+   install lags ~14d, so an iOS+Android total misreads the funnel) — the axis is now
+   iOS (the default/anchor) + Android. Legacy reports may still carry an all_os layer;
+   osKeys()/sliceOf() keep the page working across all three shapes. */
 function hasOS(D){ return Array.isArray(D.oses) && D.oses.length>0; }
 function osName(D,key){ const o=(D.oses||[]).find(x=>x[0]===key); return o?o[1]:key; }
+/* Never surface the legacy all_os aggregate in the switcher. */
+function osKeys(D){ return (D.oses||[]).filter(o=>o[0]!=="all_os"); }
 function sliceOf(D,app,cty){
   const c=((D.cube||{})[app]||{})[cty];
   if(!c) return null;
   if(!hasOS(D)) return c;                        // legacy 2-level cube
-  return c[S.os] || c.all_os || null;           // descend into the OS layer
+  return c[S.os] || c.ios || c.all_os || c[Object.keys(c)[0]] || null;  // OS layer
 }
 function weekRange(D){ const t=(D.date_cols||[]).find(c=>/^This/.test(c)); return t? t.replace(/^This\s*/,"").replace(/(\d\d-\d\d)-(\d\d-\d\d)/,"$1 – $2") : ""; }
 
@@ -206,10 +210,11 @@ function syncControls(D,dailyAvail,weeklyAvail){
   document.getElementById("appPill").innerHTML=D.apps.map(a=>`<button data-a="${a[0]}" class="${a[0]===S.app?'on':''}">${a[1]}</button>`).join("");
   document.getElementById("ctyPill").innerHTML=D.countries.map(c=>`<button data-c="${c[0]}" class="${c[0]===S.cty?'on':''}">${c[1]}</button>`).join("");
   const osCtl=document.getElementById("osCtl");
-  if(hasOS(D)){
+  const osList=osKeys(D);
+  if(osList.length){
     osCtl.style.display="";
     const avail=o=>!!(((D.cube[S.app]||{})[S.cty]||{})[o]);
-    document.getElementById("osPill").innerHTML=D.oses.map(o=>
+    document.getElementById("osPill").innerHTML=osList.map(o=>
       `<button data-o="${o[0]}" class="${o[0]===S.os?'on':''}" ${avail(o[0])?'':'disabled style="opacity:.4;cursor:not-allowed"'}>${o[1]}</button>`).join("");
   } else { osCtl.style.display="none"; }
   document.getElementById("cmp").textContent=(S.mode==="weekly"
@@ -239,9 +244,12 @@ async function refresh(){
   const D=block.data;
   if(!D.apps.some(a=>a[0]===S.app)) S.app="all_app";
   if(!D.countries.some(c=>c[0]===S.cty)) S.cty=D.countries[0][0];
-  // Keep the OS selection valid for the current app/country (fall back to all_os).
-  if(!hasOS(D)) S.os="all_os";
-  else if(!(((D.cube[S.app]||{})[S.cty]||{})[S.os])) S.os="all_os";
+  // Keep the OS selection valid for the current app/country. Prefer iOS (the anchor);
+  // otherwise the first available OS. all_os is never selected (removed).
+  if(hasOS(D) && !(((D.cube[S.app]||{})[S.cty]||{})[S.os])){
+    const av=osKeys(D).map(o=>o[0]).filter(o=>((D.cube[S.app]||{})[S.cty]||{})[o]);
+    S.os = av.includes("ios") ? "ios" : (av[0] || "ios");
+  }
   syncControls(D,dailyAvail,weeklyAvail);
   destroyCharts();
   if(S.page==="live") renderLive(block,srcDate); else renderReport(block,srcDate);
@@ -321,7 +329,7 @@ function toneOf(o){ return TONE[o.tone]||TONE.info; }
 function insList(D,block){
   // insights are keyed [app][cty] (legacy) or [app][cty][os] (OS-aware). pick(x)
   // returns the list, descending into the OS layer when present.
-  const pick=x=>!x?null:(hasOS(D)?(x[S.os]||x.all_os||null):x);
+  const pick=x=>!x?null:(hasOS(D)?(x[S.os]||x.ios||x.all_os||null):x);
   const bag=(D.insights||{})[S.app];
   if(bag){ const v=pick(bag[S.cty]); if(v) return v; const va=pick(bag.all); if(va) return va; }
   return (block.insights||[]).map(o=>{
