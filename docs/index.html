@@ -78,6 +78,26 @@ body{background:var(--bg);color:var(--ink);font:14px/1.5 -apple-system,BlinkMacS
 .report .deltas{display:flex;gap:28px;justify-content:center;}
 .report .d{display:flex;flex-direction:column;gap:1px;align-items:center;}
 .report .dl{font-size:9.5px;font-weight:700;color:#9aa3ad;letter-spacing:.05em;}
+/* Install-by-source strip: laid out on the same flex row as the KPI tiles, with one
+   invisible spacer per tile (and conversion connector) that precedes App Total Install,
+   so the block's left edge lines up with that tile. A stub + top border draw the link. */
+.report .srcrow{display:flex;margin:8px 0 6px;}
+.report .srcwrap{position:relative;background:#fff;border:1px solid #e7ebf0;border-top:2px solid #2563eb;border-radius:12px;padding:11px 14px 12px;box-shadow:0 1px 2px rgba(20,30,50,.05);}
+.report .srcwrap::before{content:"";position:absolute;top:-10px;left:26px;width:2px;height:10px;background:#2563eb;}
+.report .srccap{font-size:10.5px;font-weight:700;color:#2563eb;letter-spacing:.05em;text-transform:uppercase;margin-bottom:9px;}
+.report .srcstrip{display:flex;gap:10px;flex-wrap:wrap;}
+.report .scell{flex:1;min-width:158px;background:#f8fafc;border:1px solid #eef1f4;border-radius:9px;padding:8px 11px;display:flex;flex-direction:column;gap:2px;text-align:left;}
+.report .scell .sk{font-size:11px;font-weight:700;color:#6b7480;}
+.report .scell .sv{font-size:19px;font-weight:700;line-height:1.15;}
+.report .scell .ss{font-size:11px;color:#8a929c;margin-bottom:3px;}
+.report .scell .deltas{gap:9px;justify-content:flex-start;}
+.report .scell .d{align-items:flex-start;}
+.report .scell .chg{font-size:11.5px;white-space:nowrap;}
+.report .scell .dl{font-size:9px;}
+.report .sbar{display:flex;height:13px;border-radius:7px;overflow:hidden;margin:2px 0 8px;background:#f0f3f7;}
+.report .sbar span{display:block;height:13px;}
+.report .sleg{display:flex;gap:16px;font-size:11.5px;color:#6b7480;flex-wrap:wrap;margin-bottom:12px;}
+.report .sleg i,.report .sdot{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px;}
 /* funnel conversion connector between two KPI tiles */
 .report .conv{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-width:128px;padding:10px 6px;}
 .report .conv .carrow{color:#c4ccd6;font-size:16px;line-height:1;margin-bottom:1px;}
@@ -128,7 +148,9 @@ body{background:var(--bg);color:var(--ink);font:14px/1.5 -apple-system,BlinkMacS
   .report .conv .ck{font-size:9px;}
   .report .conv .deltas{gap:4px;}
 }
-@media(max-width:820px){.side{display:none}.kpis{grid-template-columns:repeat(2,1fr)}.grid2{grid-template-columns:1fr}.insights{grid-template-columns:1fr}}
+@media(max-width:820px){.side{display:none}.kpis{grid-template-columns:repeat(2,1fr)}.grid2{grid-template-columns:1fr}.insights{grid-template-columns:1fr}
+  /* no room to hang off a tile on a phone: drop the spacers and run full width */
+  .report .srcwrap{margin-left:0 !important}}
 @media print{.side,.topbar .datepick,.controls,.btn{display:none!important}.topbar{border:0}}
 </style>
 </head>
@@ -403,11 +425,79 @@ function kpiHtml(s,D){
   D.metric_order.forEach(m=>{
     const n=s[m], v=n?last(n.vals):null;
     const dodChip=(D.mode=="daily")?deltaChip("DoD",n?n.dod:null):"";
-    parts.push(`<div class="tile"><div class="k">${D.metric_labels[m]}</div><div class="v">${fmt(v)}</div><div class="deltas">${dodChip}${deltaChip("WoW",n?n.wow:null)}${deltaChip("Wo4W",n?n.wo4w:null)}</div></div>`);
+    parts.push(`<div class="tile" data-m="${m}"><div class="k">${D.metric_labels[m]}</div><div class="v">${fmt(v)}</div><div class="deltas">${dodChip}${deltaChip("WoW",n?n.wow:null)}${deltaChip("Wo4W",n?n.wo4w:null)}</div></div>`);
     const dn=CONV_AFTER[m];
     if(dn && D.metric_order.includes(dn)) parts.push(convConnector(D,s,m,dn));
   });
   return '<div class="grid">'+parts.join("")+'</div>';
+}
+/* ---------- Install by source ---------- */
+const SRC_COLORS=["#059669","#2563eb","#e67e22","#8e44ad"];
+/* The block hangs off the parent KPI tile. Rather than trying to reproduce the KPI
+   row's flex maths (tiles grow, the conversion connector is content-sized), we render
+   the wrap full width and then measure: shift it right by the parent tile's own offset
+   inside the row. Exact at any width, and re-run on resize. Below a usable width the
+   offset is dropped and the block runs full width instead. */
+const SRC_MIN_W=470;
+function alignSrc(){
+  const row=document.querySelector(".report .srcrow"), wrap=row&&row.querySelector(".srcwrap");
+  const grid=document.querySelector(".report .grid");
+  if(!row||!wrap||!grid) return;
+  const pk=wrap.dataset.parent, tile=pk?grid.querySelector('.tile[data-m="'+pk+'"]'):null;
+  const rowW=grid.getBoundingClientRect().width;
+  let off=tile?(tile.getBoundingClientRect().left-grid.getBoundingClientRect().left):0;
+  if(!tile||off<0||rowW-off<SRC_MIN_W) off=0;
+  wrap.style.marginLeft=off.toFixed(1)+"px";
+}
+window.addEventListener("resize",alignSrc);
+function srcStripHtml(s,D){
+  const so=D.source_order||[], pk=D.source_parent;
+  if(!so.length||!pk) return "";
+  const parent=s[pk], ptot=parent?last(parent.vals):null, daily=D.mode=="daily";
+  const cur=m=>s[m]?last(s[m].vals):null;
+  const shr=v=>(v==null||ptot==null||!ptot)?"n/a":((v/ptot*100).toFixed(1)+"% of Install");
+  const plabel=D.metric_labels[pk]||"Install";
+  const cells=so.map((m,i)=>{
+    const n=s[m], v=cur(m);
+    const dodChip=daily?deltaChip("DoD",n?n.dod:null):"";
+    return `<div class="scell" style="border-left:3px solid ${SRC_COLORS[i%4]}">`
+      +`<span class="sk">${D.source_labels[m]}</span><span class="sv">${fmt(v)}</span>`
+      +`<span class="ss">${shr(v)}</span>`
+      +`<div class="deltas">${dodChip}${deltaChip("WoW",n?n.wow:null)}${deltaChip("Wo4W",n?n.wo4w:null)}</div></div>`;
+  }).join("");
+  return '<div class="srcrow">'
+    +'<div class="srcwrap" style="flex:1 1 auto" data-parent="'+pk+'">'
+    +'<div class="srccap">&#9492; '+plabel+' &mdash; by source &middot; '+appName(D,S.app)+' &middot; '+ctyName(D,S.cty)
+    +(hasOS(D)?' &middot; '+osName(D,S.os):'')+'</div>'
+    +'<div class="srcstrip">'+cells+'</div></div></div>';
+}
+function srcCardHtml(s,D){
+  const so=D.source_order||[], pk=D.source_parent;
+  if(!so.length||!pk) return "";
+  const parent=s[pk], ptot=parent?last(parent.vals):null, daily=D.mode=="daily";
+  const cur=m=>s[m]?last(s[m].vals):null;
+  const shrS=v=>(v==null||ptot==null||!ptot)?"n/a":((v/ptot*100).toFixed(1)+"%");
+  const plabel=D.metric_labels[pk]||"Install";
+  const dcell=x=>`<td><span class="chg ${cl(x)}">${pctTxt(x)}</span></td>`;
+  const head="<tr><th>Source</th><th>Value</th><th>Share of Install</th>"
+    +(daily?"<th>DoD &Delta;%</th>":"")+"<th>WoW &Delta;%</th><th>Wo4W &Delta;%</th></tr>";
+  const rows=so.map((m,i)=>{
+    const n=s[m], v=cur(m);
+    return `<tr><td><i class="sdot" style="background:${SRC_COLORS[i%4]}"></i>${D.source_labels[m]}</td>`
+      +`<td>${fmt(v)}</td><td>${shrS(v)}</td>`+(daily?dcell(n?n.dod:null):"")
+      +dcell(n?n.wow:null)+dcell(n?n.wo4w:null)+"</tr>";
+  }).join("");
+  const totRow=`<tr><td><b>${plabel} (total)</b></td><td><b>${fmt(ptot)}</b></td><td>100%</td>`
+    +(daily?dcell(parent?parent.dod:null):"")+dcell(parent?parent.wow:null)
+    +dcell(parent?parent.wo4w:null)+"</tr>";
+  const segs=so.map((m,i)=>{const v=cur(m); const w=(v==null||!ptot)?0:(v/ptot*100);
+    return `<span style="width:${w.toFixed(1)}%;background:${SRC_COLORS[i%4]}" title="${D.source_labels[m]}"></span>`;}).join("");
+  const leg=so.map((m,i)=>{const v=cur(m);
+    return `<span><i style="background:${SRC_COLORS[i%4]}"></i>${D.source_labels[m]} ${(v==null||!ptot)?"":((v/ptot*100).toFixed(1)+"%")}</span>`;}).join("");
+  return card(plabel+" by source &middot; "+appName(D,S.app)+" &middot; "+ctyName(D,S.cty)+(hasOS(D)?" &middot; "+osName(D,S.os):""),
+    `<div class="sbar">${segs}</div><div class="sleg">${leg}</div>`
+    +`<table><thead>${head}</thead><tbody>${rows}${totRow}</tbody></table>`
+    +`<p class="sub" style="margin:9px 0 0">Shares are % of the ${plabel} total. Only the three tracked sources are broken out, so they need not sum to 100%.</p>`);
 }
 function funnelHtml(s,D){
   const lagged=new Set(D.lagged||[]);
@@ -488,7 +578,9 @@ function renderReport(block,srcDate){
     </div><div style="flex:1"></div><button class="btn" onclick="window.print()">⬇ Download PDF</button></div>`;
   const meta='<div class="cmp" style="margin-top:0">Period: '+period+' · Country: '+ctyName(D,S.cty)+(hasOS(D)?' · OS: '+osName(D,S.os):'')+(D.mode=="weekly"&&srcDate!==S.date?(' · weekly source '+srcDate):'')+'</div>';
   document.getElementById("body").innerHTML=head+meta+'<div class="report">'+
-    kpiHtml(s,D)+execHtml(insList(D,block))+funnelHtml(s,D)+detailHtml(s,D)+byAppHtml(D)+byCountryHtml(D)+dataGapsHtml(s,D)+'</div>';
+    kpiHtml(s,D)+srcStripHtml(s,D)+execHtml(insList(D,block))+funnelHtml(s,D)+detailHtml(s,D)
+    +byAppHtml(D)+srcCardHtml(s,D)+byCountryHtml(D)+dataGapsHtml(s,D)+'</div>';
+  alignSrc();
 }
 
 /* ---------- events ---------- */
