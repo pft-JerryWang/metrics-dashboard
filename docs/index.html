@@ -208,6 +208,32 @@ function sliceOf(D,app,cty){
 }
 function weekRange(D){ const t=(D.date_cols||[]).find(c=>/^This/.test(c)); return t? t.replace(/^This\s*/,"").replace(/(\d\d-\d\d)-(\d\d-\d\d)/,"$1 – $2") : ""; }
 
+/* ---------- analysis-day vs report-file date ----------
+   Report JSON files are keyed by the *run* date (S.date, the computation date). The
+   number a reader cares about is the *analysis day* (the day the data is for), which
+   lags the run by 2 days (or 3 on an --offset-days fallback). These helpers convert
+   between the two so the title and the date picker speak analysis-day, while file
+   lookups keep using the run date. */
+const ANALYSIS_LAG=2;
+function isoAddDays(iso,n){ const d=new Date(iso+"T00:00:00Z"); if(isNaN(d)) return iso; d.setUTCDate(d.getUTCDate()+n); return d.toISOString().slice(0,10); }
+function toAnalysisDay(fileISO){ return isoAddDays(fileISO,-ANALYSIS_LAG); }   // run date -> analysis day (picker bounds)
+function toFileDay(analysisISO){ return isoAddDays(analysisISO,ANALYSIS_LAG); } // analysis day -> run date (file lookup)
+/* True analysis day (daily): resolve the analysis column's MM-DD against the run date
+   so the year is right across a year boundary or an --offset-days fallback. */
+function analysisDayISO(D,srcDate){
+  const mmdd=last(D.date_cols||[]); if(!mmdd) return toAnalysisDay(srcDate);
+  for(let k=0;k<=14;k++){ const c=isoAddDays(srcDate,-k); if(c.slice(5)===mmdd) return c; }
+  return toAnalysisDay(srcDate);
+}
+/* Analysis week's end day (weekly) — used to position the single-date picker in
+   analysis space (the picker cannot render a range). */
+function weekEndISO(D,srcDate){
+  const t=(D.date_cols||[]).find(c=>/^This/.test(c)), m=t&&t.match(/\d\d-\d\d-(\d\d-\d\d)/);
+  if(!m) return toAnalysisDay(srcDate);
+  for(let k=0;k<=21;k++){ const c=isoAddDays(srcDate,-k); if(c.slice(5)===m[1]) return c; }
+  return toAnalysisDay(srcDate);
+}
+
 async function getReport(date){
   if(CACHE[date]) return CACHE[date];
   const r=await fetch("./data/report_"+date+".json",{cache:"no-store"});
@@ -493,15 +519,21 @@ function dataGapsHtml(s,D){
 function renderReport(block,srcDate){
   const D=block.data, s=sliceOf(D,S.app,S.cty)||{};
   const modeWord=D.mode=="weekly"?"Weekly":"Daily";
-  const period=D.mode=="weekly"?weekRange(D):(last(D.date_cols)+" (analysis day, T-2)");
+  // Title shows the analysis day (daily) / analysis-week range (weekly) — the day the
+  // data is for — not the run/computation date, which misled readers. The old "Period"
+  // sub-line is dropped (country/OS are already in the filter pills above; the weekly
+  // source note lives in the footer).
+  const periodLabel=D.mode=="weekly"?weekRange(D):analysisDayISO(D,srcDate);
   const head=`<div class="rephead"><div>
       <div class="kick">Trending Report</div>
-      <div class="h">${modeWord} report for <b>${appName(D,S.app)}</b> <span style="color:var(--muted)">(${srcDate})</span></div>
+      <div class="h">${modeWord} report for <b>${appName(D,S.app)}</b> <span style="color:var(--muted)">(${periodLabel})</span></div>
     </div><div style="flex:1"></div><button class="btn" onclick="window.print()">⬇ Download PDF</button></div>`;
-  const meta='<div class="cmp" style="margin-top:0">Period: '+period+' · Country: '+ctyName(D,S.cty)+(hasOS(D)?' · OS: '+osName(D,S.os):'')+(D.mode=="weekly"&&srcDate!==S.date?(' · weekly source '+srcDate):'')+'</div>';
-  document.getElementById("body").innerHTML=head+meta+'<div class="report">'+
+  document.getElementById("body").innerHTML=head+'<div class="report">'+
     kpiHtml(s,D)+srcStripHtml(s,D)+execHtml(insList(D,block))+funnelHtml(s,D)+detailHtml(s,D)
     +byAppHtml(D)+srcCardHtml(s,D)+byCountryHtml(D)+dataGapsHtml(s,D)+'</div>';
+  // Keep the date picker showing the true analysis day of the report on screen.
+  const dp=document.getElementById("dp");
+  if(dp){ const av=D.mode=="weekly"?weekEndISO(D,srcDate):analysisDayISO(D,srcDate); if(av) dp.value=av; }
   alignSrc();
 }
 
@@ -511,7 +543,8 @@ document.getElementById("modeSeg").addEventListener("click",e=>{const b=e.target
 document.getElementById("appPill").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;S.app=b.dataset.a;refresh();});
 document.getElementById("ctyPill").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;S.cty=b.dataset.c;refresh();});
 document.getElementById("osPill").addEventListener("click",e=>{const b=e.target.closest("button");if(!b||b.disabled)return;S.os=b.dataset.o;refresh();});
-document.getElementById("dp").addEventListener("change",e=>{if(e.target.value){S.date=e.target.value;refresh();}});
+// The picker speaks analysis-day; map the picked analysis day back to the run/file date.
+document.getElementById("dp").addEventListener("change",e=>{if(e.target.value){S.date=toFileDay(e.target.value);refresh();}});
 
 (async()=>{
   try{
@@ -520,7 +553,10 @@ document.getElementById("dp").addEventListener("change",e=>{if(e.target.value){S
     S.date=INDEX.latest_daily||INDEX.dates[0].date;
     S.mode="daily";
     const dp=document.getElementById("dp");
-    dp.value=S.date; dp.max=INDEX.dates[0].date; dp.min=INDEX.dates[INDEX.dates.length-1].date;
+    // Bounds in analysis-day space (GA / Looker Studio style): the newest selectable day
+    // is the latest analysis day = latest run date − lag, so readers can't pick a day
+    // whose data doesn't exist yet. refresh() then pins the value to the true analysis day.
+    dp.value=toAnalysisDay(S.date); dp.max=toAnalysisDay(INDEX.dates[0].date); dp.min=toAnalysisDay(INDEX.dates[INDEX.dates.length-1].date);
     document.querySelectorAll("#nav a").forEach(a=>a.classList.toggle("on",a.dataset.page===S.page));
     await refresh();
   }catch(e){
