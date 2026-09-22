@@ -233,6 +233,19 @@ function weekEndISO(D,srcDate){
   for(let k=0;k<=21;k++){ const c=isoAddDays(srcDate,-k); if(c.slice(5)===m[1]) return c; }
   return toAnalysisDay(srcDate);
 }
+/* 3-letter weekday (e.g. Tue) appended to the title dates for quick day-of-week reads. */
+const WD=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+function wdOf(iso){ const d=new Date(iso+"T00:00:00Z"); return isNaN(d)?"":WD[d.getUTCDay()]; }
+/* Weekly range with a weekday on each end, e.g. "09-13 Sun – 09-19 Sat". Both ends
+   are resolved to full dates (against the run date) so the weekday is accurate. */
+function weekRangeLabeled(D,srcDate){
+  const t=(D.date_cols||[]).find(c=>/^This/.test(c)), m=t&&t.match(/(\d\d-\d\d)-(\d\d-\d\d)/);
+  if(!m) return weekRange(D);
+  const end=weekEndISO(D,srcDate); let start=null;
+  for(let k=0;k<=13;k++){ const c=isoAddDays(end,-k); if(c.slice(5)===m[1]){ start=c; break; } }
+  const s=start?(m[1]+" "+wdOf(start)):m[1];
+  return s+" – "+m[2]+" "+wdOf(end);
+}
 
 async function getReport(date){
   if(CACHE[date]) return CACHE[date];
@@ -523,7 +536,8 @@ function renderReport(block,srcDate){
   // data is for — not the run/computation date, which misled readers. The old "Period"
   // sub-line is dropped (country/OS are already in the filter pills above; the weekly
   // source note lives in the footer).
-  const periodLabel=D.mode=="weekly"?weekRange(D):analysisDayISO(D,srcDate);
+  const ad=analysisDayISO(D,srcDate);
+  const periodLabel=D.mode=="weekly"?weekRangeLabeled(D,srcDate):(ad+" "+wdOf(ad));
   const head=`<div class="rephead"><div>
       <div class="kick">Trending Report</div>
       <div class="h">${modeWord} report for <b>${appName(D,S.app)}</b> <span style="color:var(--muted)">(${periodLabel})</span></div>
