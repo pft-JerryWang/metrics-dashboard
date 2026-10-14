@@ -62,9 +62,15 @@ body{background:var(--bg);color:var(--ink);font:14px/1.5 -apple-system,BlinkMacS
 /* Install-by-source strip: laid out on the same flex row as the KPI tiles, with one
    invisible spacer per tile (and conversion connector) that precedes App Total Install,
    so the block's left edge lines up with that tile. A stub + top border draw the link. */
-.report .srcrow{display:flex;margin:8px 0 6px;}
+.report .srcrow{display:flex;margin:8px 0 6px;align-items:stretch;}
+.report .srcrow.stack{flex-direction:column;gap:8px;}
+.report .srcrow.stack .srcwrap{width:auto !important;flex:1 1 auto !important;margin-left:0 !important;}
+/* Revenue by purchase type (Subscription / Pay as you go): right-hand block, purple accent */
+.report .srcwrap.rt{margin-left:auto;border-top-color:#8e44ad;}
+.report .srcwrap.rt::before{background:#8e44ad;}
+.report .srcwrap.rt .srccap{color:#8e44ad;}
 .report .srcwrap{position:relative;background:#fff;border:1px solid #e7ebf0;border-top:2px solid #2563eb;border-radius:12px;padding:11px 14px 12px;box-shadow:0 1px 2px rgba(20,30,50,.05);}
-.report .srcwrap::before{content:"";position:absolute;top:-10px;left:26px;width:2px;height:10px;background:#2563eb;}
+.report .srcwrap::before{content:"";position:absolute;top:-10px;left:var(--stub,26px);width:2px;height:10px;background:#2563eb;}
 .report .srccap{font-size:10.5px;font-weight:700;color:#2563eb;letter-spacing:.05em;text-transform:uppercase;margin-bottom:9px;}
 .report .srcstrip{display:flex;gap:10px;flex-wrap:wrap;}
 .report .scell{flex:1;min-width:158px;background:#f8fafc;border:1px solid #eef1f4;border-radius:9px;padding:8px 11px;display:flex;flex-direction:column;gap:2px;text-align:left;}
@@ -128,6 +134,11 @@ body{background:var(--bg);color:var(--ink);font:14px/1.5 -apple-system,BlinkMacS
   .report .conv .cv{font-size:17px;}
   .report .conv .ck{font-size:9px;}
   .report .conv .deltas{gap:4px;}
+  /* breakdown cells: let 3 (install) + 2 (purchase type) cells shrink without spilling */
+  .report .scell{min-width:0;padding:7px 8px;}
+  .report .scell .deltas{gap:5px;flex-wrap:wrap;}
+  .report .scell .chg{font-size:10.5px;}
+  .report .scell .sv{font-size:17px;}
 }
 @media(max-width:820px){.side{display:none}
   /* no room to hang off a tile on a phone: drop the spacers and run full width */
@@ -392,74 +403,114 @@ function kpiHtml(s,D){
   });
   return '<div class="grid">'+parts.join("")+'</div>';
 }
-/* ---------- Install by source ---------- */
+/* ---------- Breakdowns: Install by source + Revenue by purchase type ----------
+   One row under the KPI tiles (Jerry's mockup, 2026-10-14):
+     • Install by source — left-aligned, from the row's left edge up to New Subs
+     • Revenue by purchase type (Subscription / Pay as you go) — spans New Subs → Revenue,
+       flush right.
+   Each block's connector stub sits under its own parent tile. Install sources do NOT
+   sum to Install (PPC left out on purpose); the two purchase types DO sum to Revenue.
+   Older reports without revtype_* simply show the Install block alone. */
 const SRC_COLORS=["#059669","#2563eb","#e67e22","#8e44ad"];
-/* The block hangs off the parent KPI tile. Rather than trying to reproduce the KPI
-   row's flex maths (tiles grow, the conversion connector is content-sized), we render
-   the wrap full width and then measure: shift it right by the parent tile's own offset
-   inside the row. Exact at any width, and re-run on resize. Below a usable width the
-   offset is dropped and the block runs full width instead. */
-const SRC_MIN_W=470;
+const RT_COLORS=["#8e44ad","#e67e22"];
+function bkSpecs(D){
+  const out=[];
+  if((D.source_order||[]).length&&D.source_parent)
+    out.push({kind:"source",order:D.source_order,labels:D.source_labels,parent:D.source_parent,
+              word:"by source",col:"Source",colors:SRC_COLORS,partition:false});
+  if((D.revtype_order||[]).length&&D.revtype_parent)
+    out.push({kind:"revtype",order:D.revtype_order,labels:D.revtype_labels,parent:D.revtype_parent,
+              word:"by purchase type",col:"Type",colors:RT_COLORS,partition:true});
+  return out;
+}
+function sliceCap(D){ return appName(D,S.app)+" &middot; "+ctyName(D,S.cty)+(hasOS(D)?" &middot; "+osName(D,S.os):""); }
+const SRC_MIN_W=480, RT_MIN_W=340, BK_GAP=14;
 function alignSrc(){
-  const row=document.querySelector(".report .srcrow"), wrap=row&&row.querySelector(".srcwrap");
-  const grid=document.querySelector(".report .grid");
-  if(!row||!wrap||!grid) return;
-  const pk=wrap.dataset.parent, tile=pk?grid.querySelector('.tile[data-m="'+pk+'"]'):null;
-  const rowW=grid.getBoundingClientRect().width;
-  let off=tile?(tile.getBoundingClientRect().left-grid.getBoundingClientRect().left):0;
-  if(!tile||off<0||rowW-off<SRC_MIN_W) off=0;
-  wrap.style.marginLeft=off.toFixed(1)+"px";
+  const row=document.querySelector(".report .srcrow"), grid=document.querySelector(".report .grid");
+  if(!row||!grid) return;
+  const g=grid.getBoundingClientRect();
+  const L=row.querySelector('.srcwrap[data-kind="source"]'), R=row.querySelector('.srcwrap[data-kind="revtype"]');
+  const tiles=[...grid.querySelectorAll(".tile")];
+  const tileOf=k=>tiles.find(t=>t.dataset.m===k)||null;
+  let stacked=window.innerWidth<=820;
+  [L,R].forEach(w=>{ if(w){ w.style.width=""; w.style.flex=""; w.style.marginLeft=""; }});
+  if(R&&!stacked){
+    const rp=tileOf(R.dataset.parent), i=tiles.indexOf(rp), anchor=i>0?tiles[i-1]:rp;
+    const start=anchor?anchor.getBoundingClientRect().left-g.left:0;
+    if(!anchor||g.width-start<RT_MIN_W||(L&&start-BK_GAP<SRC_MIN_W)) stacked=true;
+    if(!stacked){ R.style.flex="0 0 auto"; R.style.width=(g.width-start).toFixed(1)+"px";
+      if(L){ L.style.flex="0 0 auto"; L.style.width=(start-BK_GAP).toFixed(1)+"px"; } }
+  }
+  row.classList.toggle("stack",stacked);
+  [L,R].forEach(w=>{ if(!w) return; const t=tileOf(w.dataset.parent), wr=w.getBoundingClientRect();
+    let off=t?(t.getBoundingClientRect().left-wr.left+26):26;
+    off=Math.max(14,Math.min(off,wr.width-20));
+    w.style.setProperty("--stub",off.toFixed(0)+"px"); });
 }
 window.addEventListener("resize",alignSrc);
-function srcStripHtml(s,D){
-  const so=D.source_order||[], pk=D.source_parent;
-  if(!so.length||!pk) return "";
-  const parent=s[pk], ptot=parent?last(parent.vals):null, daily=D.mode=="daily";
-  const cur=m=>s[m]?last(s[m].vals):null;
-  const shr=v=>(v==null||ptot==null||!ptot)?"n/a":((v/ptot*100).toFixed(1)+"% of Install");
-  const plabel=D.metric_labels[pk]||"Install";
-  const cells=so.map((m,i)=>{
-    const n=s[m], v=cur(m);
+function bkStrip(sp,s,D){
+  const parent=s[sp.parent], ptot=parent?last(parent.vals):null, daily=D.mode=="daily";
+  const plabel=D.metric_labels[sp.parent]||sp.parent, pshort=plabel.replace("App Total ","");
+  const shr=v=>(v==null||ptot==null||!ptot)?"n/a":((v/ptot*100).toFixed(1)+"% of "+pshort);
+  const cells=sp.order.map((m,i)=>{
+    const n=s[m], v=n?last(n.vals):null;
     const dodChip=daily?deltaChip("DoD",n?n.dod:null):"";
-    return `<div class="scell" style="border-left:3px solid ${SRC_COLORS[i%4]}">`
-      +`<span class="sk">${D.source_labels[m]}</span><span class="sv">${fmt(v)}</span>`
+    return `<div class="scell" style="border-left:3px solid ${sp.colors[i%sp.colors.length]}">`
+      +`<span class="sk">${sp.labels[m]}</span><span class="sv">${fmt(v)}</span>`
       +`<span class="ss">${shr(v)}</span>`
       +`<div class="deltas">${dodChip}${deltaChip("WoW",n?n.wow:null)}${deltaChip("Wo4W",n?n.wo4w:null)}</div></div>`;
   }).join("");
-  return '<div class="srcrow">'
-    +'<div class="srcwrap" style="flex:1 1 auto" data-parent="'+pk+'">'
-    +'<div class="srccap">&#9492; '+plabel+' &mdash; by source &middot; '+appName(D,S.app)+' &middot; '+ctyName(D,S.cty)
-    +(hasOS(D)?' &middot; '+osName(D,S.os):'')+'</div>'
-    +'<div class="srcstrip">'+cells+'</div></div></div>';
+  return `<div class="srcwrap${sp.kind=="revtype"?" rt":""}" style="flex:1 1 auto" data-kind="${sp.kind}" data-parent="${sp.parent}">`
+    +`<div class="srccap">&#9492; ${plabel} &mdash; ${sp.word} &middot; ${sliceCap(D)}</div>`
+    +`<div class="srcstrip">${cells}</div></div>`;
 }
-function srcCardHtml(s,D){
-  const so=D.source_order||[], pk=D.source_parent;
-  if(!so.length||!pk) return "";
-  const parent=s[pk], ptot=parent?last(parent.vals):null, daily=D.mode=="daily";
-  const cur=m=>s[m]?last(s[m].vals):null;
+function srcStripHtml(s,D){
+  const sp=bkSpecs(D);
+  return sp.length?('<div class="srcrow">'+sp.map(x=>bkStrip(x,s,D)).join("")+'</div>'):"";
+}
+function bkCard(sp,s,D){
+  const parent=s[sp.parent], ptot=parent?last(parent.vals):null, daily=D.mode=="daily";
+  const plabel=D.metric_labels[sp.parent]||sp.parent, pshort=plabel.replace("App Total ","");
+  const C=i=>sp.colors[i%sp.colors.length];
+  const lv=n=>n?last(n.vals):null;
   const shrS=v=>(v==null||ptot==null||!ptot)?"n/a":((v/ptot*100).toFixed(1)+"%");
-  const plabel=D.metric_labels[pk]||"Install";
   const dcell=x=>`<td><span class="chg ${cl(x)}">${pctTxt(x)}</span></td>`;
-  const head="<tr><th>Source</th><th>Value</th><th>Share of Install</th>"
+  const head=`<tr><th>${sp.col}</th><th>Value</th><th>Share of ${pshort}</th>`
     +(daily?"<th>DoD &Delta;%</th>":"")+"<th>WoW &Delta;%</th><th>Wo4W &Delta;%</th></tr>";
-  const rows=so.map((m,i)=>{
-    const n=s[m], v=cur(m);
-    return `<tr><td><i class="sdot" style="background:${SRC_COLORS[i%4]}"></i>${D.source_labels[m]}</td>`
-      +`<td>${fmt(v)}</td><td>${shrS(v)}</td>`+(daily?dcell(n?n.dod:null):"")
-      +dcell(n?n.wow:null)+dcell(n?n.wo4w:null)+"</tr>";
-  }).join("");
+  const rows=sp.order.map((m,i)=>{const n=s[m], v=lv(n);
+    return `<tr><td><i class="sdot" style="background:${C(i)}"></i>${sp.labels[m]}</td><td>${fmt(v)}</td><td>${shrS(v)}</td>`
+      +(daily?dcell(n?n.dod:null):"")+dcell(n?n.wow:null)+dcell(n?n.wo4w:null)+"</tr>";}).join("");
   const totRow=`<tr><td><b>${plabel} (total)</b></td><td><b>${fmt(ptot)}</b></td><td>100%</td>`
-    +(daily?dcell(parent?parent.dod:null):"")+dcell(parent?parent.wow:null)
-    +dcell(parent?parent.wo4w:null)+"</tr>";
-  const segs=so.map((m,i)=>{const v=cur(m); const w=(v==null||!ptot)?0:(v/ptot*100);
-    return `<span style="width:${w.toFixed(1)}%;background:${SRC_COLORS[i%4]}" title="${D.source_labels[m]}"></span>`;}).join("");
-  const leg=so.map((m,i)=>{const v=cur(m);
-    return `<span><i style="background:${SRC_COLORS[i%4]}"></i>${D.source_labels[m]} ${(v==null||!ptot)?"":((v/ptot*100).toFixed(1)+"%")}</span>`;}).join("");
-  return card(plabel+" by source &middot; "+appName(D,S.app)+" &middot; "+ctyName(D,S.cty)+(hasOS(D)?" &middot; "+osName(D,S.os):""),
+    +(daily?dcell(parent?parent.dod:null):"")+dcell(parent?parent.wow:null)+dcell(parent?parent.wo4w:null)+"</tr>";
+  const segs=sp.order.map((m,i)=>{const v=lv(s[m]); const w=(v==null||!ptot)?0:(v/ptot*100);
+    return `<span style="width:${w.toFixed(1)}%;background:${C(i)}" title="${sp.labels[m]}"></span>`;}).join("");
+  const leg=sp.order.map((m,i)=>{const v=lv(s[m]);
+    return `<span><i style="background:${C(i)}"></i>${sp.labels[m]} ${(v==null||!ptot)?"":((v/ptot*100).toFixed(1)+"%")}</span>`;}).join("");
+  let extra="";
+  if(sp.partition){
+    /* distribution across apps (this country/OS) and across countries (this app/OS) */
+    const pgk=sp.order[sp.order.length-1];
+    const xrow=(name,cell)=>{ if(!cell||!cell[sp.parent]) return "";
+      const t=lv(cell[sp.parent]);
+      const tds=sp.order.map(m=>{const n=cell[m]; return `<td>${fmt(lv(n))} <span class="chg ${cl(n?n.wo4w:null)}">${pctTxt(n?n.wo4w:null)}</span></td>`;}).join("");
+      const pg=lv(cell[pgk]);
+      return `<tr><td>${name}</td>${tds}<td>${(pg==null||!t)?"n/a":(pg/t*100).toFixed(1)+"%"}</td><td>${fmt(t)} <span class="chg ${cl(cell[sp.parent].wo4w)}">${pctTxt(cell[sp.parent].wo4w)}</span></td></tr>`;};
+    const xh=lab=>`<tr><th>${lab}</th>`+sp.order.map(m=>`<th>${sp.labels[m]} (Wo4W)</th>`).join("")
+      +`<th>${sp.labels[pgk]} share</th><th>${pshort} (Wo4W)</th></tr>`;
+    const osN=hasOS(D)?" &middot; "+osName(D,S.os):"";
+    const byApp=D.apps.map(([a,l])=>xrow(l,sliceOf(D,a,S.cty))).join("");
+    const byCty=D.countries.map(([c,l])=>xrow(l,sliceOf(D,S.app,c))).join("");
+    extra=`<h2 style="margin-top:16px">Across apps &middot; ${ctyName(D,S.cty)}${osN}</h2><table><thead>${xh("App")}</thead><tbody>${byApp}</tbody></table>`
+      +`<h2 style="margin-top:16px">Across countries &middot; ${appName(D,S.app)}${osN}</h2><table><thead>${xh("Country")}</thead><tbody>${byCty}</tbody></table>`;
+  }
+  const note=sp.partition?`The two purchase types add up to ${plabel}. Subscription is recurring revenue (fed by new subs ~7 days earlier); Pay as you go is one-off spend.`
+    :`Shares are % of the ${plabel} total. Only the three tracked sources are broken out, so they need not sum to 100%.`;
+  return card(plabel+" "+sp.word+" &middot; "+sliceCap(D),
     `<div class="sbar">${segs}</div><div class="sleg">${leg}</div>`
     +`<table><thead>${head}</thead><tbody>${rows}${totRow}</tbody></table>`
-    +`<p class="sub" style="margin:9px 0 0">Shares are % of the ${plabel} total. Only the three tracked sources are broken out, so they need not sum to 100%.</p>`);
+    +`<p class="sub" style="margin:9px 0 0">${note}</p>${extra}`);
 }
+function srcCardHtml(s,D){ return bkSpecs(D).map(sp=>bkCard(sp,s,D)).join(""); }
 function funnelHtml(s,D){
   const lagged=new Set(D.lagged||[]);
   const pts=D.metric_order.map(m=>[m, s[m]?s[m].p:null]);
