@@ -259,8 +259,28 @@ function weekRangeLabeled(D,srcDate){
   return s+" – "+m[2]+" "+wdOf(end);
 }
 
+/* AI Sharing Hub build (scripts/build_hub.py): data ships as <script> chunks instead of
+   JSON files — data/index.js sets window.__HUB_INDEX, and each report is split into
+   data/r-<date>-<n>.js files that push string parts into window.__R[date]. */
+function loadScript(src){
+  return new Promise((ok,no)=>{const s=document.createElement("script");s.src=src;s.onload=ok;
+    s.onerror=()=>no(new Error("Could not load "+src));document.head.appendChild(s);});
+}
 async function getReport(date){
   if(CACHE[date]) return CACHE[date];
+  if(window.__HUB_INDEX){
+    const n=(INDEX.parts||{})[date];
+    if(!n) throw new Error("No report file for "+date);
+    window.__R=window.__R||{};
+    await Promise.all(Array.from({length:n},(_,i)=>loadScript("./data/r-"+date+"-"+i+".js")));
+    let txt=window.__R[date].join(""); delete window.__R[date];
+    if(INDEX.enc==="gzip-b64"){   // base64(gzip(json)) — keeps the package under the Hub's size cap
+      const bin=Uint8Array.from(atob(txt),c=>c.charCodeAt(0));
+      txt=await new Response(new Blob([bin]).stream().pipeThrough(new DecompressionStream("gzip"))).text();
+    }
+    CACHE[date]=JSON.parse(txt);
+    return CACHE[date];
+  }
   const r=await fetch("./data/report_"+date+".json",{cache:"no-store"});
   if(!r.ok) throw new Error("No report file for "+date+" (HTTP "+r.status+")");
   CACHE[date]=await r.json(); return CACHE[date];
@@ -647,8 +667,12 @@ document.getElementById("dp").addEventListener("change",e=>{if(e.target.value){S
 
 (async()=>{
   try{
-    INDEX=await (await fetch("./data/index.json",{cache:"no-store"})).json();
+    INDEX=window.__HUB_INDEX||await (await fetch("./data/index.json",{cache:"no-store"})).json();
     if(!INDEX.dates||!INDEX.dates.length) throw new Error("No reports indexed.");
+    // Hub builds: link the frozen quarterly archive artifacts (older history) in the side nav.
+    const arch=(INDEX.archives||[]).map(a=>`<a href="${a.url}" target="_blank" rel="noopener">Archive ${a.label}</a>`);
+    if(INDEX.archive) arch.unshift(`<a class="on">Archive ${INDEX.archive}</a>`);
+    if(arch.length) document.getElementById("nav").insertAdjacentHTML("beforeend",arch.join(""));
     S.date=INDEX.latest_daily||INDEX.dates[0].date;
     S.mode="daily";
     const dp=document.getElementById("dp");
