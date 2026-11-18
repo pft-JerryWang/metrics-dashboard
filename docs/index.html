@@ -35,7 +35,9 @@ body{background:var(--bg);color:var(--ink);font:14px/1.5 -apple-system,BlinkMacS
 .seg button{appearance:none;border:0;background:#fff;color:var(--muted);padding:7px 16px;font:inherit;font-weight:600;font-size:13px;cursor:pointer}
 .seg button.on{background:var(--ink);color:#fff}
 .seg button:disabled{color:#cbd1d9;cursor:not-allowed}
-.row2{display:flex;flex-wrap:wrap;gap:10px 22px;align-items:center;margin-top:10px}
+.row2{display:flex;flex-wrap:wrap;gap:10px 22px;align-items:center}
+.topbar{flex-wrap:wrap}
+.seg button:disabled.on{background:#9ca3af;color:#fff}
 .ctl{display:flex;align-items:center;gap:8px}
 .ctl .cl{color:var(--muted);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.4px}
 .pill{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
@@ -118,6 +120,18 @@ body{background:var(--bg);color:var(--ink);font:14px/1.5 -apple-system,BlinkMacS
 .report .sub{color:#6b7480;font-size:12.5px;}
 .report ul.gaps{margin:4px 0;padding-left:18px;font-size:12px;color:#6b7480;}
 .foot{color:var(--muted);font-size:11.5px;margin-top:18px}
+/* Unavailable installs page + Total-view Install subline (2026-11-17) */
+.nav a.subnav{padding-left:30px;font-size:13px}
+.report .tile .us{font-size:11.5px;color:#6b7480;line-height:1.35}
+.report .tile .us b{color:#39424f;font-weight:600}
+.report .tile .usub{font-size:11px;color:#b45309;font-weight:600;margin:-2px 0 5px}
+.report .tw{overflow-x:auto}
+.report .ulink{color:var(--blue);font-weight:600;cursor:pointer;white-space:nowrap}
+.report tr[data-slice]{cursor:pointer}
+.report tr[data-slice]:hover td{background:#f8fafc}
+.report tr.cur td{background:#fff7ed}
+.report .warnbar{background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:10px;padding:9px 12px;margin:0 0 12px;font-size:12.5px}
+.report .uchart svg{width:100%;height:auto;display:block}
 .err{background:#fef2f2;border:1px solid #fecaca;color:#991b1b;border-radius:10px;padding:14px;margin:14px 0}
 .load{color:var(--muted);padding:40px 0;text-align:center}
 /* Narrow effective viewport (boss screen: 150% DPI + Chrome zoom 110-125% collapses
@@ -144,7 +158,7 @@ body{background:var(--bg);color:var(--ink);font:14px/1.5 -apple-system,BlinkMacS
 @media(max-width:820px){.side{display:none}
   /* no room to hang off a tile on a phone: drop the spacers and run full width */
   .report .srcwrap{margin-left:0 !important}}
-@media print{.side,.topbar .datepick,.controls,.btn{display:none!important}.topbar{border:0}}
+@media print{.side,.topbar .datepick,.topbar .seg,.controls,.btn{display:none!important}.topbar{border:0}}
 </style>
 </head>
 <body>
@@ -158,6 +172,10 @@ body{background:var(--bg);color:var(--ink);font:14px/1.5 -apple-system,BlinkMacS
         <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2h9l5 5v15H6z"/><path d="M14 2v6h6"/><path d="M9 13h6M9 17h6"/></svg>
         Summary Report
       </a>
+      <a data-page="unav" class="subnav">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>
+        Unavailable installs
+      </a>
     </nav>
   </aside>
 
@@ -165,14 +183,19 @@ body{background:var(--bg);color:var(--ink);font:14px/1.5 -apple-system,BlinkMacS
     <div class="topbar">
       <div class="ttl" id="ttl">Summary Report</div>
       <div class="spacer"></div>
+      <!-- Install basis + period toggles sit next to the date picker (2026-11-17). -->
+      <div class="seg" id="instSeg" style="display:none" title="App Total Install basis">
+        <button data-i="total">Total</button>
+        <button data-i="excl">Exclude Unavailable</button>
+      </div>
+      <div class="seg" id="modeSeg" style="display:none">
+        <button data-m="daily">Daily</button>
+        <button data-m="weekly">Weekly</button>
+      </div>
       <div class="datepick"><label for="dp" id="dpLbl">Date</label><input type="date" id="dp"><select id="wkSel" style="display:none" aria-label="Week"></select></div>
     </div>
     <div class="content">
       <div class="controls" id="controls" style="display:none">
-        <div class="seg" id="modeSeg">
-          <button data-m="daily">Daily</button>
-          <button data-m="weekly">Weekly</button>
-        </div>
         <div class="row2">
           <div class="ctl"><span class="cl">App</span><div class="pill" id="appPill"></div></div>
           <div class="ctl"><span class="cl">Country</span><div class="pill" id="ctyPill"></div></div>
@@ -190,7 +213,8 @@ body{background:var(--bg);color:var(--ink);font:14px/1.5 -apple-system,BlinkMacS
 let INDEX=null, CACHE={};
 /* Only the Summary Report page remains (the Live Dashboard was retired 2026-09-01).
    S.page is kept so a second page can be re-introduced without reworking the nav. */
-const S={page:"report",date:null,mode:"daily",app:"all_app",cty:"all",os:"ios"};
+/* inst = App Total Install basis: "excl" (Exclude Unavailable, default) | "total". */
+const S={page:"report",date:null,mode:"daily",inst:"excl",app:"all_app",cty:"all",os:"ios"};
 try{ const sv=localStorage.getItem("pf_page"); if(sv&&sv!=="live") S.page=sv; }catch(e){}
 
 /* shared helpers */
@@ -212,11 +236,21 @@ function hasOS(D){ return Array.isArray(D.oses) && D.oses.length>0; }
 function osName(D,key){ const o=(D.oses||[]).find(x=>x[0]===key); return o?o[1]:key; }
 /* Never surface the legacy all_os aggregate in the switcher. */
 function osKeys(D){ return (D.oses||[]).filter(o=>o[0]!=="all_os"); }
+/* Install basis (added 2026-11-17). Reports with install_basis="excl_unavailable" carry
+   Install EXCLUDING Unavailable installs in D.cube (the default view) and the raw Total
+   nodes for the affected cells in D.cube_total. Older reports only have the Total, so
+   the Exclude option is unavailable for them. */
+function hasExcl(D){ return D.install_basis==="excl_unavailable"; }
+function effInst(D){ return hasExcl(D)?S.inst:"total"; }
 function sliceOf(D,app,cty){
   const c=((D.cube||{})[app]||{})[cty];
   if(!c) return null;
   if(!hasOS(D)) return c;                        // legacy 2-level cube
-  return c[S.os] || c.ios || c.all_os || c[Object.keys(c)[0]] || null;  // OS layer
+  const k=c[S.os]?S.os:(c.ios?"ios":(c.all_os?"all_os":Object.keys(c)[0]));  // OS layer
+  const base=c[k]||null;
+  if(!base || effInst(D)!=="total") return base;
+  const ov=(((D.cube_total||{})[app]||{})[cty]||{})[k];
+  return ov?Object.assign({},base,ov):base;      // Total overlay on the affected metrics
 }
 function weekRange(D){ const t=(D.date_cols||[]).find(c=>/^This/.test(c)); return t? t.replace(/^This\s*/,"").replace(/(\d\d-\d\d)-(\d\d-\d\d)/,"$1 – $2") : ""; }
 
@@ -314,6 +348,14 @@ function syncDatePicker(srcDate){
 /* ---------- control bar ---------- */
 function syncControls(D,dailyAvail,weeklyAvail){
   document.getElementById("controls").style.display="block";
+  document.getElementById("modeSeg").style.display="";
+  document.getElementById("instSeg").style.display=S.page==="unav"?"none":"";
+  const ex=hasExcl(D), inst=effInst(D);
+  document.querySelectorAll("#instSeg button").forEach(b=>{
+    const na=b.dataset.i==="excl"&&!ex;
+    b.disabled=na; b.title=na?"Not available for this report (Unavailable split starts with reports from 2026-11-15)":"";
+    b.classList.toggle("on",b.dataset.i===inst);
+  });
   document.querySelectorAll("#modeSeg button").forEach(b=>{
     const ok=b.dataset.m==="daily"?(dailyAvail||(INDEX.daily_dates||[]).length>0):weeklyAvail;
     b.disabled=!ok; b.classList.toggle("on",b.dataset.m===S.mode);
@@ -328,9 +370,14 @@ function syncControls(D,dailyAvail,weeklyAvail){
     document.getElementById("osPill").innerHTML=osList.map(o=>
       `<button data-o="${o[0]}" class="${o[0]===S.os?'on':''}" ${avail(o[0])?'':'disabled style="opacity:.4;cursor:not-allowed"'}>${o[1]}</button>`).join("");
   } else { osCtl.style.display="none"; }
-  document.getElementById("cmp").textContent=(S.mode==="weekly"
+  document.getElementById("cmp").textContent=S.page==="unav"
+     ? (S.mode==="weekly"
+        ? "Unavailable installs: this week vs last week and the prior-4-week average (counts, not % change)"
+        : "Unavailable installs: analysis day vs the same weekday last week and the past-4-week average (counts, not % change)")
+     : ((S.mode==="weekly"
      ? "Comparison: this week vs last week (WoW) + vs prior-4-week avg (Wo4W)"
-     : "Comparison: analysis day vs previous day (DoD) + same weekday last week (WoW) + past-4-week avg (Wo4W)");
+     : "Comparison: analysis day vs previous day (DoD) + same weekday last week (WoW) + past-4-week avg (Wo4W)")
+     + (inst==="excl"?" · Install excludes Unavailable installs":" · Install = Total (incl. Unavailable)"));
 }
 
 /* ---------- dispatch ---------- */
@@ -361,7 +408,8 @@ async function refresh(){
     S.os = av.includes("ios") ? "ios" : (av[0] || "ios");
   }
   syncControls(D,dailyAvail,weeklyAvail);
-  renderReport(block,srcDate);
+  document.getElementById("ttl").textContent=S.page==="unav"?"Unavailable installs":"Summary Report";
+  if(S.page==="unav") renderUnav(block,srcDate); else renderReport(block,srcDate);
   document.getElementById("foot").textContent="Source: data-auto-analyzer / metric-analysis · reads the latest JSON committed in /docs/data."+
     (S.mode==="weekly" && srcDate!==S.date ? "  ·  Weekly source: "+srcDate+" (most recent Monday report ≤ selected date)" : "");
 }
@@ -393,14 +441,18 @@ function insList(D,block){
             head:i>=0?o.title.slice(i+3):"", body:o.body, tone:"info"};
   });
 }
-function execHtml(list){
+function execHtml(list,D){
   list=(list||[]).slice().sort((a,b)=>(TONE_RANK[a.tone]??3)-(TONE_RANK[b.tone]??3));
+  // The summary is computed once, on Install excluding Unavailable; say so in Total view.
+  const note=(D&&hasExcl(D)&&effInst(D)==="total")
+    ?'<p class="sub" style="margin:-4px 0 6px">Summary is based on Install excluding Unavailable installs.</p>':"";
   const rows=list.map(o=>{
     const c=toneOf(o);
     const head=o.head?`<span class="head" style="color:${c.head}">${o.head}</span>`:"";
-    return `<div class="ins"><span class="dot" style="background:${c.dot}"></span><span><b>${o.kick}</b>${head}<span class="detail">${o.body}</span></span></div>`;
+    const lk=(D&&D.unav&&o.kick==="Unavailable installs")?' <a class="ulink" data-goto="unav">Open Unavailable installs report &rarr;</a>':"";
+    return `<div class="ins"><span class="dot" style="background:${c.dot}"></span><span><b>${o.kick}</b>${head}<span class="detail">${o.body}${lk}</span></span></div>`;
   }).join("");
-  return card("Executive Summary",rows);
+  return card("Executive Summary",note+rows);
 }
 /* Funnel conversion rate = down / up (e.g. New Subs / Install), with WoW & Wo4W
    as percentage-point deltas. Computed from the cube's per-date values so it tracks
@@ -437,12 +489,20 @@ function convConnector(D,s,upKey,downKey){
 }
 /* Insert a conversion connector after these upstream tiles (up → next count layer). */
 const CONV_AFTER={app_total_install:"app_total_new_subs"};
+/* Total view: say how much of the Install figure is Unavailable (count + share only —
+   no WoW/Wo4W: Unavailable comes in bursts over a near-zero base, so % changes mislead). */
+function unavSubline(D,m,v){
+  if(m!==D.source_parent||!hasExcl(D)||effInst(D)!=="total"||v==null) return "";
+  const e=rawNode(D,S.app,S.cty,m), ev=e?last(e.vals):null;
+  if(ev==null||v-ev<=0) return "";
+  return `<div class="usub">incl. ${fmt(v-ev)} Unavailable (${(v?(v-ev)/v*100:0).toFixed(1)}%)</div>`;
+}
 function kpiHtml(s,D){
   const parts=[];
   D.metric_order.forEach(m=>{
     const n=s[m], v=n?last(n.vals):null;
     const dodChip=(D.mode=="daily")?deltaChip("DoD",n?n.dod:null):"";
-    parts.push(`<div class="tile" data-m="${m}"><div class="k">${D.metric_labels[m]}</div><div class="v">${fmt(v)}</div><div class="deltas">${dodChip}${deltaChip("WoW",n?n.wow:null)}${deltaChip("Wo4W",n?n.wo4w:null)}</div></div>`);
+    parts.push(`<div class="tile" data-m="${m}"><div class="k">${D.metric_labels[m]}</div><div class="v">${fmt(v)}</div>${unavSubline(D,m,v)}<div class="deltas">${dodChip}${deltaChip("WoW",n?n.wow:null)}${deltaChip("Wo4W",n?n.wo4w:null)}</div></div>`);
     const dn=CONV_AFTER[m];
     if(dn && D.metric_order.includes(dn)) parts.push(convConnector(D,s,m,dn));
   });
@@ -639,7 +699,7 @@ function renderReport(block,srcDate){
       <div class="h">${modeWord} report for <b>${appName(D,S.app)}</b> <span style="color:var(--muted)">(${periodLabel})</span></div>
     </div><div style="flex:1"></div><button class="btn" onclick="window.print()">⬇ Download PDF</button></div>`;
   document.getElementById("body").innerHTML=head+'<div class="report">'+
-    kpiHtml(s,D)+srcStripHtml(s,D)+execHtml(insList(D,block))+funnelHtml(s,D)+detailHtml(s,D)
+    kpiHtml(s,D)+srcStripHtml(s,D)+execHtml(insList(D,block),D)+funnelHtml(s,D)+detailHtml(s,D)
     +byAppHtml(D)+srcCardHtml(s,D)+byCountryHtml(D)+dataGapsHtml(s,D)+'</div>';
   // Keep the date picker showing the true analysis day of the report on screen.
   const dp=document.getElementById("dp");
@@ -648,7 +708,163 @@ function renderReport(block,srcDate){
   alignSrc();
 }
 
+/* ---------- Unavailable installs page (added 2026-11-17) ----------
+   Reads D.unav (analyze.py _unav_block): day-level Total Install (t), Unavailable (u),
+   New User (nu) and Unavailable by source (src) for the last 42 days, per cell that had
+   any Unavailable. Counts are compared with counts (last period, 4-period average) —
+   never as % change, since Unavailable arrives in bursts over a near-zero base. The
+   Total vs Exclude % changes come from cube / cube_total. */
+const U_COL={ex:"#cbd5e1",un:"#e67e22",nu:"#2563eb",hi:"#fff7ed"};
+function rawNode(D,app,cty,m){
+  const c=((D.cube||{})[app]||{})[cty]; if(!c) return null;
+  const o=hasOS(D)?(c[S.os]||null):c; return o?(o[m]||null):null;
+}
+function totNode(D,app,cty,m){ return ((((D.cube_total||{})[app]||{})[cty]||{})[S.os]||{})[m]||rawNode(D,app,cty,m); }
+function uCell(U,app,cty,os){ return (((U.cells||{})[app]||{})[cty]||{})[os||S.os]||null; }
+function uSum(a,i0,i1){ if(!a||i0<0) return null; let s=0,n=0; for(let i=i0;i<=i1;i++){ if(a[i]!=null){s+=a[i];n++;} } return n?s:null; }
+/* now / last period / 4-period avg. Daily: same weekday x4; weekly: prior 4 weeks. Both
+   step back 7 days, so one formula covers both modes. */
+function uStats(U,a){
+  const i0=U.dates.indexOf(U.period[0]), i1=U.dates.indexOf(U.period[1]);
+  const back=k=>uSum(a,i0-7*k,i1-7*k), ps=[1,2,3,4].map(back).filter(v=>v!=null);
+  return {now:uSum(a,i0,i1), last:back(1), avg:ps.length?ps.reduce((x,y)=>x+y,0)/ps.length:null};
+}
+function shareTxt(n,d){ return (n==null||!d)?"n/a":(n/d*100).toFixed(1)+"%"; }
+function uSliceTxt(D){ return appName(D,S.app)+" &middot; "+ctyName(D,S.cty)+(hasOS(D)?" &middot; "+osName(D,S.os):""); }
+function uTilesHtml(D,U){
+  const daily=D.mode==="daily", cell=uCell(U,S.app,S.cty), P=D.source_parent;
+  const z={now:0,last:0,avg:0}, us=cell?uStats(U,cell.u):z;
+  const tn=totNode(D,S.app,S.cty,P), en=rawNode(D,S.app,S.cty,P);
+  const ts=cell?uStats(U,cell.t):{now:tn?last(tn.vals):null,last:null,avg:null};
+  const lastLbl=daily?"Same weekday last week":"Last week", avgLbl=daily?"Past-4-wk avg":"Prior-4-wk avg";
+  const ln=(k,v)=>`<div class="us">${k}: <b>${v}</b></div>`;
+  const t1=`<div class="tile"><div class="k">Unavailable installs</div><div class="v" style="color:${U_COL.un}">${fmt(us.now)}</div>${ln(lastLbl,fmt(us.last))}${ln(avgLbl,fmt(us.avg))}</div>`;
+  const t2=`<div class="tile"><div class="k">Share of Total Install</div><div class="v">${shareTxt(us.now,ts.now)}</div>${ln(lastLbl,shareTxt(us.last,ts.last))}${ln(avgLbl,shareTxt(us.avg,ts.avg))}</div>`;
+  const t3=`<div class="tile"><div class="k">${D.metric_labels[P]||"App Total Install"} (excl. Unavailable)</div><div class="v">${fmt(en?last(en.vals):null)}</div>${ln("Total incl. Unavailable",fmt(tn?last(tn.vals):null))}</div>`;
+  const nu=rawNode(D,S.app,S.cty,"app_total_new_user");
+  const dod=daily?deltaChip("DoD",nu?nu.dod:null):"";
+  const t4=nu?`<div class="tile"><div class="k">${D.metric_labels.app_total_new_user||"New User"}</div><div class="v">${fmt(last(nu.vals))}</div><div class="deltas">${dod}${deltaChip("WoW",nu.wow)}${deltaChip("Wo4W",nu.wo4w)}</div></div>`:"";
+  return '<div class="grid">'+t1+t2+t3+t4+'</div>';
+}
+function niceStep(x){ const p=Math.pow(10,Math.floor(Math.log10(x||1))), f=x/p; return (f<=1?1:f<=2?2:f<=5?5:10)*p; }
+function uTrendHtml(D,U){
+  const weekly=D.mode==="weekly", cell0=uCell(U,S.app,S.cty);
+  const title=(weekly?"Weekly trend, last 6 weeks":"Daily trend, last 6 weeks")+" &middot; "+uSliceTxt(D);
+  if(!cell0) return card(title,'<p class="sub" style="margin:0">No Unavailable installs in the last 6 weeks for this slice.</p>');
+  // Days before the data window starts (Total Install 0/missing) are left out; in Weekly a
+  // week that starts before the first data day is partial, so it is left out too.
+  const s0=Math.max(0,cell0.t.findIndex(v=>v));
+  const pi0=U.dates.indexOf(U.period[0]), pi1=U.dates.indexOf(U.period[1]);
+  const B=[];   // bars: {lab, tip, t, u, nu, hi}
+  if(weekly){
+    // dates end on the analysis week's Saturday, so 7-day groups from the end are Sun–Sat weeks.
+    for(let e=U.dates.length-1;e-6>=s0;e-=7){
+      const b=e-6, sm=a=>uSum(a,b,e), d0=U.dates[b], d1=U.dates[e];
+      B.unshift({lab:d0.slice(5), tip:`${d0} – ${d1}`, t:sm(cell0.t), u:sm(cell0.u), nu:sm(cell0.nu), hi:e===pi1});
+    }
+  } else {
+    for(let i=s0;i<U.dates.length;i++){ const d=U.dates[i];
+      B.push({lab:((U.dates.length-1-i)%7===0)?d.slice(5):"", tip:`${d} ${wdOf(d)}`, t:cell0.t[i], u:cell0.u[i], nu:cell0.nu[i], hi:i>=pi0&&i<=pi1}); }
+  }
+  const n=B.length, W=1000, H=250, L=56, R=8, T=10, Bm=28, cw=(W-L-R)/Math.max(n,1), bw=Math.max(2,cw*(weekly?0.55:0.72));
+  const mx=Math.max(1,...B.map(b=>b.t||0),...B.map(b=>b.nu||0)), st=niceStep(mx/4), top=Math.ceil(mx/st)*st;
+  const y=v=>T+(H-T-Bm)*(1-v/top), x=i=>L+cw*i+(cw-bw)/2;
+  let g="";
+  B.forEach((b,i)=>{ if(b.hi) g+=`<rect x="${(L+cw*i).toFixed(1)}" y="${T}" width="${cw.toFixed(1)}" height="${H-T-Bm}" fill="${U_COL.hi}"/>`; });
+  for(let v=0;v<=top+1e-9;v+=st){ g+=`<line x1="${L}" x2="${W-R}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke="#eef1f4"/><text x="${L-6}" y="${(y(v)+4).toFixed(1)}" text-anchor="end" font-size="11" fill="#6b7480">${fmt(v)}</text>`; }
+  B.forEach((b,i)=>{
+    const tv=b.t||0, uv=b.u||0, ex=Math.max(0,tv-uv);
+    g+=`<g><title>${b.tip} · Total Install ${fmt(b.t)} · Unavailable ${b.u==null?"no data yet":fmt(b.u)} (${shareTxt(b.u,b.t)}) · Excl. Unavailable ${fmt(ex)} · New User ${fmt(b.nu)}</title>`
+      +`<rect x="${(L+cw*i).toFixed(1)}" y="${T}" width="${cw.toFixed(1)}" height="${H-T-Bm}" fill="transparent"/>`
+      +`<rect x="${x(i).toFixed(1)}" y="${y(ex).toFixed(1)}" width="${bw.toFixed(1)}" height="${(y(0)-y(ex)).toFixed(1)}" fill="${U_COL.ex}"/>`
+      +(uv>0?`<rect x="${x(i).toFixed(1)}" y="${y(tv).toFixed(1)}" width="${bw.toFixed(1)}" height="${(y(ex)-y(tv)).toFixed(1)}" fill="${U_COL.un}"/>`:"")
+      +`</g>`;
+    if(weekly&&uv>0) g+=`<text x="${(L+cw*i+cw/2).toFixed(1)}" y="${(y(tv)-5).toFixed(1)}" text-anchor="middle" font-size="11" font-weight="700" fill="${U_COL.un}" pointer-events="none">${fmt(uv)}</text>`;
+    if(b.lab) g+=`<text x="${(L+cw*i+cw/2).toFixed(1)}" y="${H-8}" text-anchor="middle" font-size="11" fill="#6b7480">${weekly?b.lab+" wk":b.lab}</text>`;
+  });
+  const pts=B.map((b,i)=>b.nu==null?null:`${(L+cw*i+cw/2).toFixed(1)},${y(b.nu).toFixed(1)}`).filter(Boolean).join(" ");
+  g+=`<polyline points="${pts}" fill="none" stroke="${U_COL.nu}" stroke-width="2" pointer-events="none"/>`;
+  if(weekly) B.forEach((b,i)=>{ if(b.nu!=null) g+=`<circle cx="${(L+cw*i+cw/2).toFixed(1)}" cy="${y(b.nu).toFixed(1)}" r="3" fill="${U_COL.nu}" pointer-events="none"/>`; });
+  const leg=`<div class="sleg"><span><i style="background:${U_COL.ex}"></i>Install excl. Unavailable</span><span><i style="background:${U_COL.un}"></i>Unavailable</span><span><i style="background:${U_COL.nu};height:3px;vertical-align:middle"></i>New User</span><span><i style="background:${U_COL.hi};border:1px solid #fed7aa"></i>${weekly?"Analysis week":"Analysis day"}</span></div>`;
+  const note=weekly?"Each bar is one Sun–Sat week (label = week start); bar height = Total Install, the orange top and its number are Unavailable. Hover a week for the numbers."
+                   :"Bar height = Total Install; the orange top is Unavailable. Hover a day for the numbers.";
+  return card(title,leg+`<div class="uchart"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${weekly?"Weekly":"Daily"} Install split into Unavailable and the rest, with New User">${g}</svg></div>`
+    +`<p class="sub" style="margin:8px 0 0">${note}</p>`);
+}
+function uImpactHtml(D){
+  const P=D.source_parent, keys=[P].concat(D.source_order||[]), dcell=x=>`<span class="chg ${cl(x)}">${pctTxt(x)}</span>`;
+  const pair=(a,b)=>`<td>${dcell(a)} &rarr; ${dcell(b)}</td>`;
+  const flips=(a,b)=>a!=null&&b!=null&&((a>=0)!==(b>=0)||Math.abs(a-b)>=0.05);
+  let rows=keys.map(m=>{
+    const e=rawNode(D,S.app,S.cty,m), t=totNode(D,S.app,S.cty,m); if(!e||!t) return "";
+    const tv=last(t.vals), ev=last(e.vals), lab=D.metric_labels[m]||(D.source_labels||{})[m]||m;
+    const ch=flips(t.wow,e.wow)||flips(t.wo4w,e.wo4w);
+    return `<tr><td>${m===P?"<b>"+lab+"</b>":lab}</td><td>${fmt(tv)}</td><td>${fmt(tv!=null&&ev!=null?tv-ev:null)}</td><td>${fmt(ev)}</td>${pair(t.wow,e.wow)}${pair(t.wo4w,e.wo4w)}<td>${ch?'<b style="color:#b45309">Yes</b>':'<span class="flat">No</span>'}</td></tr>`;
+  }).join("");
+  const sE=sliceOf(D,S.app,S.cty)&&(((D.cube[S.app]||{})[S.cty]||{})[S.os]);
+  if(sE && D.metric_order.includes("app_total_new_subs")){
+    const ov=(((D.cube_total||{})[S.app]||{})[S.cty]||{})[S.os], sT=ov?Object.assign({},sE,ov):sE;
+    const ce=convCells(D,sE,P,"app_total_new_subs"), ct=convCells(D,sT,P,"app_total_new_subs");
+    if(ce&&ct){ const r=x=>x==null?"n/a":(x*100).toFixed(1)+"%";
+      rows+=`<tr class="convrow"><td>Install &rarr; New Subs conversion</td><td>${r(ct.now)}</td><td></td><td>${r(ce.now)}</td>${pair(ct.wow,ce.wow)}${pair(ct.wo4w,ce.wo4w)}<td>${(flips(ct.wow,ce.wow)||flips(ct.wo4w,ce.wo4w))?'<b style="color:#b45309">Yes</b>':'<span class="flat">No</span>'}</td></tr>`; }
+  }
+  const head=`<tr><th>Metric</th><th>Total</th><th>Unavailable</th><th>Excl. Unavailable</th><th>WoW: Total &rarr; Excl.</th><th>Wo4W: Total &rarr; Excl.</th><th>Read changes?</th></tr>`;
+  return card("Does it change the read? &middot; "+uSliceTxt(D),`<div class="tw"><table><thead>${head}</thead><tbody>${rows}</tbody></table></div>`
+    +'<p class="sub" style="margin:9px 0 0">"Yes" when counting Unavailable flips the direction of a change or moves it by 5 points or more. The rest of the report uses the Excl. figures.</p>');
+}
+function uWhereHtml(D,U){
+  const daily=D.mode==="daily", out=[];
+  const oses=hasOS(D)?osKeys(D).map(o=>o[0]):["ios"];
+  Object.entries(U.cells||{}).forEach(([a,cs])=>{ if(a==="all_app") return;
+    Object.entries(cs).forEach(([c,oss])=>{ if(c==="all") return;
+      Object.entries(oss).forEach(([o,cell])=>{ if(!oses.includes(o)) return; const st=uStats(U,cell.u); if(st.now>0) out.push({a,c,o,cell,st}); }); }); });
+  out.sort((p,q)=>q.st.now-p.st.now);
+  const rowOf=(r,bold)=>{
+    const t=uStats(U,r.cell.t).now, nu=uStats(U,r.cell.nu).now;
+    const split=Object.entries(r.cell.src||{}).map(([k,a])=>{const v=uStats(U,a).now; return v?`${((D.source_labels||{})[k]||k).replace(/ Install$/,"")} ${shareTxt(v,r.st.now)}`:"";}).filter(Boolean).join(", ")||"—";
+    const cur=r.a===S.app&&r.c===S.cty&&r.o===S.os;
+    const nm=`${appName(D,r.a)} &middot; ${ctyName(D,r.c)}${hasOS(D)?" &middot; "+osName(D,r.o):""}`;
+    return `<tr data-slice="${r.a}|${r.c}|${r.o}" class="${cur?"cur":""}"><td>${bold?"<b>"+nm+"</b>":nm}</td><td><b style="color:${U_COL.un}">${fmt(r.st.now)}</b></td><td>${shareTxt(r.st.now,t)}</td><td>${fmt(r.st.last)}</td><td>${fmt(r.st.avg)}</td><td>${split}</td><td>${fmt(nu)}</td></tr>`;
+  };
+  const tot=oses.map(o=>{const cell=uCell(U,"all_app","all",o); if(!cell) return ""; const st=uStats(U,cell.u); return st.now>0?rowOf({a:"all_app",c:"all",o,cell,st},true):"";}).join("");
+  const body=out.slice(0,15).map(r=>rowOf(r,false)).join("");
+  if(!tot&&!body) return card("Where they came from",'<p class="sub" style="margin:0">No Unavailable installs in this period.</p>');
+  const head=`<tr><th>App &middot; Country${hasOS(D)?" &middot; OS":""}</th><th>Unavailable</th><th>Share of Total Install</th><th>${daily?"Same weekday last week":"Last week"}</th><th>${daily?"Past-4-wk avg":"Prior-4-wk avg"}</th><th>Counted under</th><th>New User</th></tr>`;
+  return card("Where they came from &middot; "+(daily?"analysis day":"this week"),`<div class="tw"><table><thead>${head}</thead><tbody>${tot}${body}</tbody></table></div>`
+    +`<p class="sub" style="margin:9px 0 0">Largest app &times; country cells first${out.length>15?" (top 15 of "+out.length+")":""}; click a row to switch the page to it. Only the tracked countries are broken out, so the rows can add up to less than All. "Counted under" is the Install source Tableau files them under.</p>`);
+}
+function uAboutHtml(D,U){
+  return card("About Unavailable installs",'<p class="sub" style="margin:0">App Store Connect gives some downloads the source type <b>Unavailable</b>: promo and offer codes, gift cards, device-management (MDM) installs and other downloads Apple cannot attribute. They are iOS only. Marketing leaves them out of Install by default, so the Summary Report shows Install excluding them; this page shows how many there were, where, and whether counting them would change the read. In Oct&ndash;Nov 2026 they came in bursts of about 1,000&ndash;3,700 a day, almost all YouCam Makeup iOS US, and New User did not rise with them.'
+    +(U.through?` Unavailable data runs through <b>${U.through}</b>.`:"")+'</p>');
+}
+function renderUnav(block,srcDate){
+  const D=block.data, U=D.unav, daily=D.mode==="daily";
+  const ad=analysisDayISO(D,srcDate);
+  const periodLabel=daily?(ad+" "+wdOf(ad)):weekRangeLabeled(D,srcDate);
+  const head=`<div class="rephead"><div>
+      <div class="kick">Install basis</div>
+      <div class="h">Unavailable installs for <b>${appName(D,S.app)}</b> <span style="color:var(--muted)">(${periodLabel})</span></div>
+    </div><div style="flex:1"></div><button class="btn" onclick="window.print()">⬇ Download PDF</button></div>`;
+  let body;
+  if(!U){
+    body=card("Not available for this report",'<p class="sub" style="margin:0">This report was built before Unavailable installs were split out. Pick a daily report for analysis day 2026-11-04 or later, or the weekly report for 11-08 – 11-14 or later.</p>');
+  } else {
+    const warn=(U.through&&U.through<U.period[1])?`<div class="warnbar">Unavailable data only runs through ${U.through}, so the latest day(s) are not split yet.</div>`:"";
+    body=warn+uTilesHtml(D,U)+uTrendHtml(D,U)+uImpactHtml(D)+uWhereHtml(D,U)+uAboutHtml(D,U);
+  }
+  document.getElementById("body").innerHTML=head+'<div class="report">'+body+'</div>';
+  const dp=document.getElementById("dp");
+  if(dp){ const av=daily?analysisDayISO(D,srcDate):weekEndISO(D,srcDate); if(av) dp.value=av; }
+  syncDatePicker(srcDate);
+}
+
 /* ---------- events ---------- */
+document.getElementById("body").addEventListener("click",e=>{
+  const g=e.target.closest("[data-goto]");
+  if(g){ S.page=g.dataset.goto; try{localStorage.setItem("pf_page",S.page)}catch(x){}; refresh(); window.scrollTo(0,0); return; }
+  const r=e.target.closest("tr[data-slice]");
+  if(r){ const [a,c,o]=r.dataset.slice.split("|"); S.app=a; S.cty=c; if(o) S.os=o; refresh(); }
+});
 document.getElementById("nav").addEventListener("click",e=>{const a=e.target.closest("a[data-page]");if(!a)return;S.page=a.dataset.page;try{localStorage.setItem("pf_page",S.page)}catch(x){};refresh();});
 document.getElementById("modeSeg").addEventListener("click",e=>{const b=e.target.closest("button");if(!b||b.disabled)return;S.mode=b.dataset.m;
   // Coming from a picked week whose run date has no daily report: show the daily report
@@ -658,6 +874,7 @@ document.getElementById("modeSeg").addEventListener("click",e=>{const b=e.target
     S.date=(INDEX.daily_dates||[]).find(d=>d<=want)||INDEX.latest_daily||S.date;
   }
   refresh();});
+document.getElementById("instSeg").addEventListener("click",e=>{const b=e.target.closest("button");if(!b||b.disabled)return;S.inst=b.dataset.i;refresh();});
 document.getElementById("wkSel").addEventListener("change",e=>{if(e.target.value){S.date=e.target.value;refresh();}});
 document.getElementById("appPill").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;S.app=b.dataset.a;refresh();});
 document.getElementById("ctyPill").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;S.cty=b.dataset.c;refresh();});
